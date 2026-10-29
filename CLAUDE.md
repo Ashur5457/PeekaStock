@@ -240,7 +240,9 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
     - 討論過程（之後改圖示可參考）：PowerShell 畫的幾何圖形太死板 → 改用 SVG＋Chrome 輸出；整片青綠色沒活力；「只有頭＋爪子」不自然，要畫整隻坐著的貓、被牆擋住一半（使用者的照片：黑貓躲在牆角、貓從門縫偷看）；單根紅 K 棒像爆竹；K 棒要照規則排（時間左到右、最高的在最右邊）；看板／螢幕太呆板；參考網路股票圖示的「長條＋折線箭頭」；國際上紅綠漲跌習慣相反，但箭頭方向已表達上漲，所以紅色可以
     - 名字聯想：「偷喵」＝偷瞄的諧音；Peeky 接近 peekaboo（躲貓貓）
   - [ ] README 截圖（使用者用真的 Chrome 截：框、設定面板、隱身外觀），放 `docs/readme/`
-  - [ ] `git init`＋第一次提交（身分 Ashur5457＋noreply，只設本 repo）；**推上 GitHub 前另外問使用者**
+  - [x] 2026-10-30 `git init -b main`＋第一次提交 `ca4fe75`（身分 Ashur5457＋noreply，只設本 repo；`.gitattributes` 照 FreeLiveSub：文字檔 LF、PNG 二進位）
+  - [ ] 推上 GitHub（公開 repo `Ashur5457/PeekStock`）：**要先問使用者**
+  - [ ] 擴充功能的漲跌顏色預設改成依介面語言（中日韓紅漲、英西綠漲）：已提議，待使用者決定
 
 ## 7. 實測發現
 
