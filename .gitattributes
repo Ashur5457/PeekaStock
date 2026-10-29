@@ -1,0 +1,3 @@
+# 文字檔在 repo 裡一律用 LF 換行，Windows／Mac／Linux 都一致
+* text=auto eol=lf
+*.png binary

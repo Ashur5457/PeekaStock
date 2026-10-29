@@ -1,0 +1,11 @@
+{
+  "extDescription": {
+    "message": "PeekStock — 숨길 수 있는 대만·미국 주식 시세창"
+  },
+  "actionTitle": {
+    "message": "PeekStock: 숨기기 / 표시 (Alt+Shift+H)"
+  },
+  "cmdToggleHide": {
+    "message": "PeekStock 숨기기 / 표시 (모든 탭)"
+  }
+}

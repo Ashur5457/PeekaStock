@@ -1,0 +1,11 @@
+{
+  "extDescription": {
+    "message": "PeekStock — cotizaciones ocultables de Taiwán y EE. UU."
+  },
+  "actionTitle": {
+    "message": "PeekStock: ocultar / mostrar (Alt+Shift+H)"
+  },
+  "cmdToggleHide": {
+    "message": "Ocultar / mostrar PeekStock (todas las pestañas)"
+  }
+}

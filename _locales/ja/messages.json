@@ -1,0 +1,11 @@
+{
+  "extDescription": {
+    "message": "PeekStock — 隠せる株価ティッカー（台湾株・米国株）"
+  },
+  "actionTitle": {
+    "message": "PeekStock：隠す／表示（Alt+Shift+H）"
+  },
+  "cmdToggleHide": {
+    "message": "PeekStock を隠す／表示（すべてのタブ）"
+  }
+}

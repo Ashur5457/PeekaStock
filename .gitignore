@@ -1,0 +1,12 @@
+# 個人的 Claude Code 筆記與設定（不公開）
+CLAUDE.local.md
+.claude/settings.local.json
+
+# tools/probe.mjs 每次執行的結果與原始回應（測試用的是縮減過的 tools/fixtures/）
+tools/probe-results/
+tools/samples/
+
+# 作業系統產生的檔案
+Thumbs.db
+desktop.ini
+.DS_Store
