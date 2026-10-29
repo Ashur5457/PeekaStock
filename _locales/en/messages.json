@@ -6,6 +6,6 @@
     "message": "PeekaStock: hide / show (Alt+Shift+H)"
   },
   "cmdToggleHide": {
-    "message": "Hide / show PeekaStock (all tabs)"
+    "message": "Hide key: hide / show PeekaStock (all tabs)"
   }
 }

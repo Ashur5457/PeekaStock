@@ -115,6 +115,7 @@ await test('同一句的 {變數} 在六種語言都一樣', () => {
 await test('畫面和程式裡寫死的 key 都存在（data-i18n、t(\'…\')）', () => {
   const used = ['overlay.js', 'panel.js'].flatMap((f) => [
     ...src(f).matchAll(/data-i18n(?:-title|-placeholder)?="([^"$]+)"/g), ...src(f).matchAll(/\bt\('([^']+)'/g),
+    ...src(f).matchAll(/'(help\.\w+|tag\.\w+)'/g),   // 使用說明（panel.js 的 HELP 表）
   ].map((m) => m[1]));
   assert.ok(used.length > 30, `只找到 ${used.length} 個`);
   used.forEach((k) => assert.ok(STRINGS[k], `少了 ${k}`));
@@ -134,7 +135,7 @@ await test('組出來的 key 也都存在：指數、地區、分頁、段標題
 await test('程式碼裡沒有漏掉的中日韓文字（註解以外都要搬進 i18n.js）', () => {
   const CJK = /[　-ヿ㐀-鿿가-힯＀-￯]/;
   const strip = (code) => code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
-  ['overlay.js', 'panel.js', 'markets.js', 'prefs.js', 'sources.js', 'schedule.js', 'box.js', 'sw.js', 'alerts.js'].forEach((f) => {
+  ['overlay.js', 'panel.js', 'markets.js', 'prefs.js', 'sources.js', 'schedule.js', 'box.js', 'sw.js', 'alerts.js', 'blank.js'].forEach((f) => {
     const bad = strip(src(f)).split('\n').filter((line) => CJK.test(line));
     assert.deepEqual(bad, [], f);
   });
@@ -191,7 +192,7 @@ await test('預設自選＋指數：key、群組、代號', () => {
   assert.equal(by['idx:^N225'].group, 'idx');
   assert.equal(items.length, 4 + INDICES.length);
 });
-await test('隱身外觀預設關；舊設定沒有 stealth 欄位也讀得進來', () => {
+await test('隱身模式預設關；舊設定沒有 stealth 欄位也讀得進來', () => {
   assert.equal(PSPrefs.DEFAULT.stealth, false);
   assert.equal(PSPrefs.merge({ watchlist: [] }).stealth, false);
   assert.equal(PSPrefs.merge({ stealth: true }).stealth, true);
@@ -480,6 +481,65 @@ await test('新設定的預設值：沒有到價提醒、大漲大跌 ±3% 開�
   assert.deepEqual([p.alerts, p.moveAlert, p.bgAlert], [{}, { on: true, pct: 3 }, false]);
 });
 
+console.log('\n空白處點兩下（blank.js）');
+load('blank.js');
+// 假的元素：chain＝自己到最外層的標籤或屬性（例如 ['span', 'a', 'body']）；closest 只要鏈上有一個在選擇器清單裡就算找到
+const fakeEl = (chain, editable = false) => ({
+  isContentEditable: editable,
+  closest: (sel) => (chain.some((x) => sel.split(',').includes(x)) ? {} : null),
+});
+const HOST = { tag: 'peek-stock' };
+const dbl = (chain, extra = {}) => ({ target: fakeEl(chain), defaultPrevented: false, composedPath: () => [], ...extra });
+await test('空白處點兩下（沒有選到字）→ 算；選到字 → 不算', () => {
+  assert.equal(PSBlank.isBlank(dbl(['div', 'body']), '', HOST), true);
+  assert.equal(PSBlank.isBlank(dbl(['html']), '  ', HOST), true);
+  assert.equal(PSBlank.isBlank(dbl(['p', 'body']), '台積電', HOST), false);
+});
+await test('輸入框、可編輯區、連結、按鈕、影片、畫布、圖片裡面點兩下 → 不算', () => {
+  ['input', 'textarea', 'a', 'button', 'video', 'canvas', 'img', 'iframe', '[role="button"]'].forEach((x) =>
+    assert.equal(PSBlank.isBlank(dbl(['span', x, 'body']), '', HOST), false, x));
+  assert.equal(PSBlank.isBlank({ ...dbl(['div']), target: fakeEl(['div'], true) }, '', HOST), false);
+});
+await test('網頁自己處理掉的、點在框裡面的 → 不算', () => {
+  assert.equal(PSBlank.isBlank(dbl(['div'], { defaultPrevented: true }), '', HOST), false);
+  assert.equal(PSBlank.isBlank(dbl(['div'], { composedPath: () => [{}, HOST, {}] }), '', HOST), false);
+});
+await test('新設定的預設值：空白處點兩下藏身開著、按鍵是 Esc 連按兩下', () => {
+  const p = PSPrefs.merge({ stealth: true });
+  assert.equal(p.dblHide, true);
+  assert.deepEqual(p.hideKey, { on: true, key: 'Escape', double: true });
+  assert.equal(PSBlank.keyLabel(p.hideKey), 'Esc');
+});
+const key = (k, extra = {}) => ({ key: k, ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, repeat: false, defaultPrevented: false, ...extra });
+const ESC2 = { on: true, key: 'Escape', double: true };
+await test('Esc 連按兩下：0.4 秒內第二下才觸發；太慢、中間按了別的鍵都要重來', () => {
+  const first = PSBlank.keyFires(key('Escape'), ESC2, null, 1000);
+  assert.deepEqual(first, { fire: false, last: 1000 });
+  assert.equal(PSBlank.keyFires(key('Escape'), ESC2, first.last, 1400).fire, true);
+  assert.equal(PSBlank.keyFires(key('Escape'), ESC2, first.last, 1401).fire, false);
+  const other = PSBlank.keyFires(key('a'), ESC2, first.last, 1100);
+  assert.equal(PSBlank.keyFires(key('Escape'), ESC2, other.last, 1200).fire, false);
+});
+await test('按住不放（repeat）、網頁處理掉的、關掉的、修飾鍵不同 → 不觸發', () => {
+  assert.equal(PSBlank.keyFires(key('Escape', { repeat: true }), ESC2, 1000, 1100).fire, false);
+  assert.equal(PSBlank.keyFires(key('Escape', { defaultPrevented: true }), ESC2, 1000, 1100).fire, false);
+  assert.equal(PSBlank.keyFires(key('Escape'), { ...ESC2, on: false }, 1000, 1100).fire, false);
+  assert.equal(PSBlank.keyFires(key('Escape', { ctrlKey: true }), ESC2, 1000, 1100).fire, false);
+});
+await test('錄製：Ctrl+Alt+H 單按一下就觸發；只按修飾鍵不算；顯示成 Ctrl+Alt+H', () => {
+  assert.equal(PSBlank.recorded(key('Shift', { shiftKey: true }), ESC2), null);
+  const hk = { ...PSBlank.recorded(key('h', { ctrlKey: true, altKey: true }), ESC2), double: false };
+  assert.equal(PSBlank.keyLabel(hk), 'Ctrl+Alt+H');
+  assert.equal(PSBlank.keyFires(key('H', { ctrlKey: true, altKey: true }), hk, null, 0).fire, true);
+  assert.equal(PSBlank.keyFires(key('h', { ctrlKey: true }), hk, null, 0).fire, false);
+});
+await test('在輸入框、可編輯區（包括框裡的輸入框）按的鍵不算', () => {
+  const typing = (chain, editable = false) => PSBlank.isTyping({ composedPath: () => [fakeEl(chain, editable)] });
+  assert.equal(typing(['input', 'form', 'body']), true);
+  assert.equal(typing(['div'], true), true);
+  assert.equal(typing(['div', 'body']), false);
+});
+
 console.log('\n懸浮框位置大小（box.js）');
 load('box.js');
 const VIEW = { w: 1280, h: 720 };
@@ -560,7 +620,7 @@ await test('MIS 失敗 → status 記錯誤和次數，其他群組照常', asyn
   assert.equal(session.status.us.ok, true);
   globalThis.fetch = fakeFetch;
 });
-await test('老闆鍵：快捷鍵、點圖示、框上的 👁 都切換 hidden', async () => {
+await test('藏身鍵：快捷鍵、點圖示、框上的 👁 都切換 hidden', async () => {
   commandListeners.forEach((cb) => cb('toggle-hide'));
   await sleep(20);
   assert.equal(session.hidden, true);

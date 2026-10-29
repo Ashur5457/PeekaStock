@@ -6,6 +6,6 @@
     "message": "PeekaStock：隱藏／顯示（Alt+Shift+H）"
   },
   "cmdToggleHide": {
-    "message": "隱藏／顯示 PeekaStock（所有分頁）"
+    "message": "藏身鍵：隱藏／顯示 PeekaStock（所有分頁）"
   }
 }

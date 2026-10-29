@@ -12,7 +12,7 @@ globalThis.PSPrefs ??= (() => {
       { market: 'us', code: 'AAPL' }, { market: 'us', code: 'NVDA' },
     ],
     indices: Object.fromEntries(PSMarkets.INDICES.map((i) => [i.symbol, true])),   // 指數開關，預設全開
-    stealth: false,   // 隱身外觀：背景透明、文字灰色、漲跌不分顏色（CLAUDE.md 2.5）
+    stealth: false,   // 隱身模式：背景透明、文字灰色、漲跌不分顏色（CLAUDE.md 2.5）
     tab: 'all',       // 框上目前選的分頁（內建分頁的 id 或自創分頁的 id）
     tabs: [],         // 自創分頁：{ id, name, keys: [項目 key…] }；同一檔可以放進多個分頁
     uiLang: 'auto',   // 介面語言：auto（跟瀏覽器）或 i18n.js 的 UI_LANGS
@@ -22,6 +22,8 @@ globalThis.PSPrefs ??= (() => {
     alerts: {},       // 到價提醒：{ [項目 key]: { above?, below? } }（見 alerts.js）
     moveAlert: { on: true, pct: 3 },   // 大漲大跌提醒：漲跌幅 ≥ ±pct% 就提醒
     bgAlert: false,   // 背景提醒：Chrome 被蓋住時也每 1 分鐘檢查有設提醒的股票（chrome.alarms，只在開盤時段）
+    dblHide: true,    // 在網頁空白處點兩下＝藏身／叫出（見 blank.js）
+    hideKey: { on: true, key: 'Escape', double: true },   // 網頁內按鍵藏身：預設 Esc 連按兩下，使用者可在設定面板錄製別的鍵
   };
 
   // 讀進來的設定和預設值合併；indices 要再合併一層，新加的指數才會出現

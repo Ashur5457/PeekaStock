@@ -6,6 +6,6 @@
     "message": "PeekaStock: ocultar / mostrar (Alt+Shift+H)"
   },
   "cmdToggleHide": {
-    "message": "Ocultar / mostrar PeekaStock (todas las pestañas)"
+    "message": "Tecla para ocultar: ocultar / mostrar PeekaStock (todas las pestañas)"
   }
 }

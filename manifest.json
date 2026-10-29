@@ -16,6 +16,6 @@
     "toggle-hide": { "suggested_key": { "default": "Alt+Shift+H" }, "description": "__MSG_cmdToggleHide__" }
   },
   "content_scripts": [
-    { "matches": ["<all_urls>"], "js": ["i18n.js", "markets.js", "prefs.js", "box.js", "panel.js", "overlay.js"], "run_at": "document_idle" }
+    { "matches": ["<all_urls>"], "js": ["i18n.js", "markets.js", "prefs.js", "box.js", "blank.js", "panel.js", "overlay.js"], "run_at": "document_idle" }
   ]
 }

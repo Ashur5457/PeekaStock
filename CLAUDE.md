@@ -60,8 +60,8 @@ chrome-ext-dev\
 - 已知畫不出來的頁面：`chrome://`、新分頁、Chrome 線上應用程式商店、內建 PDF 檢視器
 
 ### 2.5 隱藏（「上班」的核心）
-1. **老闆鍵**：`chrome.commands`（預設建議 Alt+Shift+H，使用者可在 `chrome://extensions/shortcuts` 改）。一按，所有分頁的框同時隱藏或顯示（狀態存 `chrome.storage.session`）
-2. **隱身外觀**：背景透明、文字灰色、漲跌不用紅綠改 ▲▼，看起來像一般網頁文字
+1. **藏身鍵**：`chrome.commands`（預設建議 Alt+Shift+H，使用者可在 `chrome://extensions/shortcuts` 改）。一按，所有分頁的框同時隱藏或顯示（狀態存 `chrome.storage.session`）
+2. **隱身模式**：背景透明、文字灰色、漲跌不用紅綠改 ▲▼，看起來像一般網頁文字
 3. **工具列滑鼠移上才出現**：沿用 FreeLiveSub 的 `barAutoHide`
 4. 候選（之後再做）：視窗失去焦點時數字自動打碼成 `…`；放開快捷鍵就隱藏
 
@@ -90,7 +90,7 @@ chrome.storage.session 的 quotes
 ```
 
 重點：
-- **沒有分頁在前景、或按了老闆鍵，就完全不發請求**。開 20 個分頁也只抓一次
+- **沒有分頁在前景、或按了藏身鍵，就完全不發請求**。開 20 個分頁也只抓一次
 - 不用 offscreen document、不需要訊息轉送字幕那種中繼（和 FreeLiveSub 不同）
 - 同一時間多個 tick 進來（多個視窗）要合併：sw 記住「正在抓」的 Promise，重複的 tick 直接共用
 - `chrome.alarms` 最短 30 秒，不夠即時，所以不用它當主要驅動
@@ -120,15 +120,16 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 
 | 檔案 | 作用 |
 |---|---|
-| `manifest.json` | MV3 v0.7.0；`icons`／`action.default_icon`；說明、圖示提示、快捷鍵說明用 `__MSG_…__`（`default_locale: en`）；權限 `storage`、`alarms`（背景提醒）；`commands`（toggle-hide）、`action`（點圖示＝隱藏／顯示）；`host_permissions` 只有 MIS 和 `query1.finance.yahoo.com`；content script 比對 `<all_urls>`，載入順序 i18n → markets → prefs → box → panel → overlay |
+| `manifest.json` | MV3 v0.7.0；`icons`／`action.default_icon`；說明、圖示提示、快捷鍵說明用 `__MSG_…__`（`default_locale: en`）；權限 `storage`、`alarms`（背景提醒）；`commands`（toggle-hide）、`action`（點圖示＝隱藏／顯示）；`host_permissions` 只有 MIS 和 `query1.finance.yahoo.com`；content script 比對 `<all_urls>`，載入順序 i18n → markets → prefs → box → blank → panel → overlay |
 | `_locales/*/messages.json` | manifest 的六語文字（en、zh_TW、zh_CN、ja、ko、es）：`extDescription`、`actionTitle`、`cmdToggleHide` |
 | `i18n.js` | `PSI18n`（架構沿用 FreeLiveSub）：每個 key 一行、6 欄（zh-Hant、en、zh-Hans、ja、ko、es）；`t(key, vars)`、`apply(root)`（`data-i18n`／`data-i18n-title`／`data-i18n-placeholder`）、`resolve('auto')` 依瀏覽器語言。指數名稱 `idx.＋代號`、地區 `mkt.＋市場`、錯誤 `err.＋代碼` |
 | `markets.js` | `PSMarkets`：市場表（時區、交易時段）、指數表 `INDICES`（市場、抓取群組、代號、`nameKey`）、`isOpen()` |
 | `prefs.js` | `PSPrefs`：預設自選（2330、6488、AAPL、NVDA）、指數開關、隱身、目前分頁 `tab`、自創分頁 `tabs`、介面語言 `uiLang`（auto）、漲跌顏色 `upColor`（red）、迷你模式 `mini`、到價提醒 `alerts`（`{ key: { above?, below? } }`）、大漲大跌 `moveAlert`（`{ on: true, pct: 3 }`）、背景提醒 `bgAlert`（false）；load／update／watch／merge；純函式：`items()`（設定 → 項目）、`sections()`（台股／美股／國際指數分段）、`labelOf()`（美股顯示代號、台股顯示名稱）、`classify()`（代號屬於哪個市場）、`addWatch`／`removeWatch`／`moveWatch`、分頁 `visibleTabs`／`currentTab`／`tabError`／`addTab`／`renameTab`／`removeTab`／`moveTab`／`setInTab`／`forgetKey`；自選上限 100、自創分頁上限 10、名稱 8 字 |
 | `sources.js` | `PSSources`：`mis()`、`spark()` 與各自的解析函式；`LOOKUP`（新增自選時查代號：台股一次問 tse_／otc_）；錯誤一律帶代碼 `{ code: http／notJson／mis／timeout／other, src, detail }`，框依介面語言翻成文字 |
 | `schedule.js` | `PSSchedule.due()`：純函式，決定這次 tick 要抓哪些群組、哪些項目；退避 |
-| `sw.js` | 背景程式：收 tick → 排程 → 抓取 → 寫 `storage.session` 的 `quotes`／`status`／`misLag`；老闆鍵 `toggleHidden()`（`hidden`）；抓完檢查提醒 → `alertQueue`（最多 20 個）／`alertFired`（今天響過的），框顯示完送 `dismissAlert`；背景提醒打開時 `chrome.alarms` 每 1 分鐘只抓 `PSAlerts.watched()`（框藏著也抓）；`lookup` 指令（要回覆的指令放 `REPLIES`）；開放 session 給 content script 讀 |
+| `sw.js` | 背景程式：收 tick → 排程 → 抓取 → 寫 `storage.session` 的 `quotes`／`status`／`misLag`；藏身鍵 `toggleHidden()`（`hidden`）；抓完檢查提醒 → `alertQueue`（最多 20 個）／`alertFired`（今天響過的），框顯示完送 `dismissAlert`；背景提醒打開時 `chrome.alarms` 每 1 分鐘只抓 `PSAlerts.watched()`（框藏著也抓）；`lookup` 指令（要回覆的指令放 `REPLIES`）；開放 session 給 content script 讀 |
 | `alerts.js` | `PSAlerts`：提醒規則表 `RULES`（above／below／up／down）、`check()`（只看盤中，提醒 id＝`key|kind|交易所當地日期`，一天一次）、`watched()`、`prune()`；只有 sw.js 載入 |
+| `blank.js` | `PSBlank`：網頁裡的藏身觸發。`isBlank()`＝空白處點兩下（沒選到字、不在輸入框／連結／影片／畫布等 `SKIP` 元素、不是網頁自己處理掉的、不在框裡；`prefs.dblHide`，預設開）；`keyFires()`／`isTyping()`／`keyLabel()`／`recorded()`＝網頁內按鍵（`prefs.hideKey`，預設 Esc 連按兩下、0.4 秒內，設定面板可錄製別的鍵；輸入框裡按的、按住不放、網頁處理掉的不算） |
 | `box.js` | `PSBox`：懸浮框位置大小的純函式（搬自 FreeLiveSub，可在 Node 測） |
 | `overlay.js` | 懸浮框（Shadow DOM）：拖曳、四角縮放、全螢幕、位置存 `overlayBox` 並在所有分頁同步；工具列 ⚙ 設定、◐ 隱身、👁 隱藏、↺ 重設；框上方分頁列（全部／台股／美股／國際＋自創分頁）；分頁裡有多個市場時分段加標題；分頁看得見時每 5 秒送 tick；E1 貓耳朵、貓掌提醒泡泡（一次一個，8 秒或點掉；隱身時只標亮那一列 `tr.alerted`） |
 | `panel.js` | `PSPanel`：⚙ 設定面板（自選股新增／刪除／排序／🔔 到價提醒（就地展開上下限）、自創分頁新增／改名／排序／刪除／勾選內容、指數開關、提醒：大漲大跌 ±%（0.5～20）與背景提醒、顯示：介面語言與漲跌顏色），放在框的下、上、左、右第一個放得下的位置 |
@@ -211,12 +212,12 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
   - 預設位置改成「畫的時候才算」（`box = null` 代表用預設）：測試頁發現網頁剛載入時可見範圍可能是 0，先算好的預設會讓框卡在左上角
   - 測試頁（假 chrome）實際拖工具列、拉左上角、按 ↺，位置大小與存檔都正確
   - 2026-10-29 使用者實測：拖曳、四角縮放、分頁之間同步、YouTube 全螢幕、↺ 都正常
-- [x] v0.4 老闆鍵＋隱身外觀 **（2026-10-29 使用者實測全部正常）**
-  - 老闆鍵：`storage.session` 的 `hidden`；快捷鍵（`commands` 的 `toggle-hide`，建議 Alt+Shift+H）、點工具列的 PeekStock 圖示（`action`）、框上的 👁 都呼叫 sw.js 的 `toggleHidden()`。藏起來時框不送 tick，`refresh()` 也再擋一次 → 完全不發請求；叫出來時立刻補抓
-  - 隱身外觀：`prefs.stealth`（預設 false），框上 ◐ 切換；`data-look="stealth"`＋CSS：背景透明、無框線陰影、全部 #888 灰字。漲跌一律用 ▲▼（兩種外觀都是）
+- [x] v0.4 藏身鍵＋隱身模式 **（2026-10-29 使用者實測全部正常）**
+  - 藏身鍵：`storage.session` 的 `hidden`；快捷鍵（`commands` 的 `toggle-hide`，建議 Alt+Shift+H）、點工具列的 PeekStock 圖示（`action`）、框上的 👁 都呼叫 sw.js 的 `toggleHidden()`。藏起來時框不送 tick，`refresh()` 也再擋一次 → 完全不發請求；叫出來時立刻補抓
+  - 隱身模式：`prefs.stealth`（預設 false），框上 ◐ 切換；`data-look="stealth"`＋CSS：背景透明、無框線陰影、全部 #888 灰字。漲跌一律用 ▲▼（兩種外觀都是）
   - 測試頁發現 v0.3 的預設寬 300 塞不下表格（361px，數字欄被擠到右邊要橫向捲動）→ 名稱欄最寬 7em 截斷（滑鼠移上看全名）、不是今天的資料只顯示「月-日」（滑鼠移上看完整時間）、預設寬改 320
-  - Node 測試 35 項（新增：stealth 預設與舊設定相容、三種觸發方式切換 hidden、藏起來時不發請求）；測試頁看過白底／黑底的隱身外觀與 👁
-  - 2026-10-29 使用者實測：快捷鍵 Alt+Shift+H、點圖示、👁、◐ 隱身外觀都正常
+  - Node 測試 35 項（新增：stealth 預設與舊設定相容、三種觸發方式切換 hidden、藏起來時不發請求）；測試頁看過白底／黑底的隱身模式與 👁
+  - 2026-10-29 使用者實測：快捷鍵 Alt+Shift+H、點圖示、👁、◐ 隱身模式都正常
 - [x] v0.5 自選清單管理（新增、刪除、排序、代號驗證）＋指數開關＋**分段顯示**（台股／美股／國際指數，使用者 2026-10-29 提出）＋分頁與自創分頁 **（2026-10-29 使用者實測全部正常）**
   - 工具列 ⚙ → 設定面板（`panel.js`）：輸入代號＋新增；每檔一列 ↑ ↓ ✕（pointerdown）；指數依地區分列勾選
   - 新增流程：`classify()` 判斷格式（台股 4～6 位數字可帶一個字母、美股英文代號）→ 檢查重複、上限 100 → 背景程式 `lookup`（台股一個 MIS 請求同時問 `tse_X`／`otc_X`；美股 spark）→ 存 `{ market, code, ex, name }`，之後不再猜（2.1）
@@ -249,8 +250,8 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
   - [x] **懸浮框加「偷喵」元素**（2026-10-30 使用者提議，A、B 都做；2026-10-30 使用者實測 OK）
     - 參考：Catppuccin（貓主題開源配色）、oneko.js（跟著滑鼠的像素貓，MIT）、Cat Ears Extension（幫 logo 加貓耳）——只借做法，不用素材
     - A1 框頂兩隻貓耳朵（CSS `clip-path` 三角形＋粉紅內耳），滑鼠移上時右耳抖一下；A2 配色和圖示一致：炭黑底 `rgba(30,28,36,.94)`＋金色 `#FFC23D` 強調色（取代原本的青綠 `#1D9E75`，面板也改）；A3 工具列「PeekStock」前的小貓頭 SVG；A4 資料變灰時時間旁 💤；A5 分頁沒東西時「🐾 偷喵還沒有東西可以看…」（`ov.empty`），錯誤列前 🙀
-    - B1 四角縮放把手改金色貓掌印（CSS 背景 SVG）；B2 按 👁 時耳朵縮下去、框淡出 0.16 秒再藏（老闆鍵和點圖示維持瞬間）；B3 迷你偷看模式 `prefs.mini`（工具列 ▁）：框只剩耳朵＋一行報價，每 4 秒換下一檔，高度自動
-    - **隱身外觀時所有貓元素都藏起來**（耳朵、貓頭、💤、🐾、掌印），錯誤列改回 ⚠；`err.line` 的 ⚠ 從翻譯文字拿掉，改由 CSS 依外觀決定
+    - B1 四角縮放把手改金色貓掌印（CSS 背景 SVG）；B2 按 👁 時耳朵縮下去、框淡出 0.16 秒再藏（藏身鍵和點圖示維持瞬間）；B3 迷你偷看模式 `prefs.mini`（工具列 ▁）：框只剩耳朵＋一行報價，每 4 秒換下一檔，高度自動
+    - **隱身模式時所有貓元素都藏起來**（耳朵、貓頭、💤、🐾、掌印），錯誤列改回 ⚠；`err.line` 的 ⚠ 從翻譯文字拿掉，改由 CSS 依外觀決定
     - 踩到的坑：迷你模式時框加了 class `mini`，而那一行報價的元素原本也叫 `div.mini` → CSS 把整個框藏起來（第 4 節坑 2 又一次）→ 改名 `div.miniline`
     - 2026-10-30 使用者回饋：耳朵太生硬、右耳被工具列蓋住 → 改 **E1 圓弧尖耳**（SVG，外側往外斜 8°），工具列只留貓頭 logo（文字放滑鼠提示）、`max-width: calc(100% - 104px)` 從耳朵右邊開始排
   - [x] **提醒**（2026-10-30；使用者實測 OK）：到價（🔔 每檔設上限／下限）、大漲大跌（預設開，±3%）、背景提醒（預設關）；提醒只用框裡的貓掌泡泡
@@ -373,8 +374,13 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 - 2026-10-28：15～20 分鐘延遲不能接受，台股走證交所 MIS
 - 2026-10-28：要公開到 GitHub，沿用 FreeLiveSub 的 i18n 架構
 - 2026-10-28：名稱定為 **PeekStock**。不選的名字：QuotePeek（已有同名擴充功能）、PeekStockTicker（太長，搜尋會被「stock ticker」淹沒）、GhostTicker（ghost stock 有負面意思）、HushTicker（和 HUSH 加密貨幣撞名）、FreeTicker（太普通）
-- 2026-10-29：照原本的版本順序做（v0.3 外殼 → v0.4 老闆鍵 → v0.5 自選管理）；分段顯示和自己新增股票都留到 v0.5，不提前。在那之前可在 Service Worker 主控台用 `PSPrefs.load()`＋`chrome.storage.local.set({ prefs })` 暫時新增
+- 2026-10-29：照原本的版本順序做（v0.3 外殼 → v0.4 藏身鍵 → v0.5 自選管理）；分段顯示和自己新增股票都留到 v0.5，不提前。在那之前可在 Service Worker 主控台用 `PSPrefs.load()`＋`chrome.storage.local.set({ prefs })` 暫時新增
 - 2026-10-30：改名 **PeekaStock**（中文「偷喵看盤」）。不選：PeeCaStock（英文 pee＝尿尿）。網路上沒搜到同名擴充功能；概念相近的有 iOS 的 PeepStock（偽裝成郵件 App）
-- 2026-10-30：要做提醒（到價、大漲大跌 ±3% 可調）：預設只在框看得見時檢查，另可開「背景提醒」（每 1 分鐘、只抓有設提醒的股票、只在開盤時段，預設關）；提醒方式只用**框裡的貓掌泡泡**（不用系統通知），隱身外觀時只把那一列標亮
+- 2026-10-30：要做提醒（到價、大漲大跌 ±3% 可調）：預設只在框看得見時檢查，另可開「背景提醒」（每 1 分鐘、只抓有設提醒的股票、只在開盤時段，預設關）；提醒方式只用**框裡的貓掌泡泡**（不用系統通知），隱身模式時只把那一列標亮
 - 2026-10-30：貓耳朵太生硬（直角三角形）且會被工具列擋住 → 改圓潤耳朵，使用者選 **E1**（圓弧尖耳），工具列改成從耳朵右邊開始排
 - 2026-10-28：資料夾配置：`chrome-ext-dev\tab-subtitle-spike`（FreeLiveSub）與 `chrome-ext-dev\PeekStock` 並排，各自獨立 repo
+- 2026-10-30：「老闆鍵」改名「藏身鍵」（英 hide key、日 隠れキー、韓 숨기기 키、西 tecla para ocultar）、「隱身外觀」改名「隱身模式」（英 Stealth mode、日 ステルスモード）；快捷鍵說明（`_locales` 的 `cmdToggleHide`）前面加上藏身鍵
+- 2026-10-30：新增「在網頁空白處點兩下＝藏身／叫出」（`blank.js`，設定「顯示 → 藏身」可關，預設開）；Alt+Shift+H 和點圖示照樣保留。測試頁實測：空白處點兩下會藏、點在文字上只選字不藏
+- 2026-10-30：使用者想把 Alt+Shift+H 改成 Esc。Chrome 的擴充功能快捷鍵一定要有 Ctrl 或 Alt，不能只用 Esc → 使用者選方案 B：框自己在網頁上聽按鍵（`prefs.hideKey`，預設「Esc 連按兩下」避免和關對話框、離開全螢幕撞到），設定面板「顯示 → 按鍵」可開關、錄製別的鍵、切換連按兩下；游標在網址列時無效（Alt+Shift+H 照樣保留，到 chrome://extensions/shortcuts 可改）。測試頁實測：單按 Esc 不動、連按兩下會藏、錄製 Ctrl+Alt+K 正確
+- 2026-10-30 實測 YouTube 錯誤紀錄：`overlay.js` 存框位置那行報錯（擴充功能重新載入後、網頁沒重新整理，舊的框被拖動 → 舊程式去存位置 → Extension context invalidated）。修正：`alive()`（`chrome.runtime.id` 不見了＝失效）統一檢查：框和面板的所有操作在 Shadow DOM 捕捉階段先檢查，失效就把舊框拿掉、不再呼叫 chrome；存位置、tick、點兩下、按鍵也都先檢查。測試頁模擬失效後按 ◐：框消失、沒有錯誤
+- 2026-10-30：設定「按鍵」改名「藏身快捷鍵」、「錄製」改「設定」（使用者看不懂「錄製」）；長說明拿掉，改成工具列最右邊的 **?**（使用說明）：和 ⚙ 共用 panel.js 的浮動視窗（`show(view)`：settings／help／null），內容是 `HELP` 表（藏身方法、按鍵範圍、隱身模式、迷你、移動縮放、提醒、💤、買賣標記、延遲），每項一個 i18n key `help.*`

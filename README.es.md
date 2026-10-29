@@ -2,7 +2,7 @@
 
 **Mira la bolsa a escondidas en el trabajo: una pequeña ventana flotante en la esquina de cualquier página con cotizaciones en tiempo real de Taiwán y EE. UU. e índices mundiales, que se oculta con un atajo.**
 
-**Ventana flotante que se puede mover y redimensionar**, **tecla del jefe**, **modo discreto**, **alertas de precio y grandes movimientos**, **lista de seguimiento con pestañas propias** e interfaz en seis idiomas. Solo cotizaciones: no opera.
+**Ventana flotante que se puede mover y redimensionar**, **tecla para ocultar**, **modo discreto**, **alertas de precio y grandes movimientos**, **lista de seguimiento con pestañas propias** e interfaz en seis idiomas. Solo cotizaciones: no opera.
 
 [![Version](https://img.shields.io/badge/version-v0.7.0-FFC23D)](manifest.json)
 [![Chrome](https://img.shields.io/badge/Chrome-desktop-4285F4)](#-instalación)
@@ -28,7 +28,9 @@ Quería echar un vistazo al mercado durante el trabajo, pero abrir una aplicaci�
 <img src="docs/readme/box.png" width="260" alt="Ventana flotante"> <img src="docs/readme/alert.png" width="260" alt="Alerta con bocadillo"> <img src="docs/readme/stealth.png" width="260" alt="Modo discreto">
 
 - **En todas las páginas**: la ventana aparece en la esquina de cada pestaña y todas comparten posición y tamaño. Se arrastra, se redimensiona desde cualquier esquina y sigue visible en vídeos a pantalla completa.
-- **Tecla del jefe**: pulsa **Alt+Shift+H** (o el icono de PeekaStock en la barra) para ocultar la ventana en todas las pestañas a la vez. Mientras está oculta no se descarga nada.
+- **Tecla para ocultar**: pulsa **Alt+Shift+H** (o el icono de PeekaStock en la barra) para ocultar la ventana en todas las pestañas a la vez. Mientras está oculta no se descarga nada.
+- **Doble clic en un espacio vacío**: también oculta o muestra la ventana (no cuenta sobre texto, enlaces, campos o vídeos; se puede desactivar en ajustes).
+- **Esc dos veces**: con el foco en la página, pulsa Esc dos veces rápido para ocultar o mostrar la ventana; en ajustes puedes grabar otra tecla (p. ej. un solo Esc o F2).
 - **Modo discreto ◐**: fondo transparente, texto gris y ▲▼ en lugar de colores; parece parte de la página.
 - **Vista mini ▁**: la ventana se reduce a las orejas del gato y una línea, con una cotización distinta cada 4 s.
 - **Alertas**: si una cotización se mueve más de ±3% (ajustable) o llega a tu precio objetivo, aparece un bocadillo con una huella de gato (p. ej. «¡NVDA sube ▲3.2%!»); en modo discreto solo se resalta la fila. No usa notificaciones del sistema.
@@ -95,14 +97,14 @@ Pulsa el botón de pieza de puzle 🧩 de la barra y fija PeekaStock (el icono o
 
 ## 🎬 Uso
 
-1. Pasa el ratón sobre la ventana para ver la barra: **⚙** ajustes, **▁** vista mini, **◐** modo discreto, **👁** ocultar, **↺** restablecer posición. Arrastra la barra (la cabeza del gato) para mover la ventana.
+1. Pasa el ratón sobre la ventana para ver la barra: **⚙** ajustes, **▁** vista mini, **◐** modo discreto, **👁** ocultar, **↺** restablecer posición, **?** cómo funciona. Arrastra la barra (la cabeza del gato) para mover la ventana.
 2. **⚙ Ajustes**:
    - **Lista de seguimiento**: escribe un código y pulsa Añadir; ↑↓ para ordenar, ✕ para quitar
    - **Pestañas propias**: añadir, ✎ renombrar, ↑↓, ✕; en «Añadir a la pestaña» marca las acciones e índices que quieras incluir
    - **Índices**: actívalos o desactívalos uno a uno
    - **Alertas**: grandes movimientos ±% (3% por defecto); para una alerta de precio pulsa 🔔 en la fila y fija un precio superior/inferior; con «En segundo plano» activado, los valores con alerta se comprueban cada minuto aunque no veas la ventana (solo con el mercado abierto) y el aviso aparece la próxima vez que la veas
    - **Vista**: idioma y colores
-3. **Tecla del jefe Alt+Shift+H**: oculta la ventana en todas las pestañas; pulsa otra vez para mostrarla. El icono de PeekaStock hace lo mismo.
+3. **Tecla para ocultar Alt+Shift+H**: oculta la ventana en todas las pestañas; pulsa otra vez para mostrarla. El icono de PeekaStock hace lo mismo.
 
 <img src="docs/readme/panel.png" width="480" alt="Panel de ajustes">
 
@@ -142,7 +144,7 @@ PeekaStock solo muestra cotizaciones y **no es asesoramiento de inversión**. La
 ```
 PeekaStock/
 ├── manifest.json         # Manifiesto de la extensión (MV3)
-├── sw.js                 # Segundo plano: programación, descarga, tecla del jefe, búsqueda de códigos
+├── sw.js                 # Segundo plano: programación, descarga, tecla para ocultar, búsqueda de códigos
 ├── sources.js            # Fuentes: MIS de la Bolsa de Taiwán, Yahoo spark (análisis y códigos de error)
 ├── schedule.js           # Qué descargar en cada tick (mercado abierto, intervalo, espera tras fallos)
 ├── markets.js            # Tabla de mercados (zonas horarias, sesiones), tabla de índices
@@ -151,6 +153,7 @@ PeekaStock/
 ├── panel.js              # Panel de ajustes ⚙
 ├── alerts.js             # Reglas de alerta: precio, grandes movimientos, una vez al día
 ├── box.js                # Cálculo de posición y tamaño de la ventana
+├── blank.js              # Detección de doble clic y Esc para ocultar
 ├── i18n.js               # Textos de la interfaz (una línea por frase, seis idiomas en paralelo)
 ├── _locales/             # Descripción y texto del atajo en seis idiomas
 ├── icons/                # Iconos de la extensión

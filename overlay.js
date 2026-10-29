@@ -2,9 +2,9 @@
 // 位置大小存 chrome.storage.local（overlayBox），所有分頁共用同一個位置：一個分頁拖了，其他分頁跟著移。
 //   分頁看得見時每 5 秒送 { to:'sw', cmd:'tick' }，背景程式決定要不要真的去抓
 //   報價、狀態、MIS 延遲統計都從 chrome.storage.session 讀，變了就重畫
-//   老闆鍵：session 的 hidden＝true 時藏起來、不送 tick；工具列 👁、快捷鍵、點圖示都切換它（sw.js 的 toggleHidden）
-//   隱身外觀：prefs.stealth，工具列 ◐ 切換；外觀全部由 CSS 的 data-look="stealth" 決定
-//   設定面板：工具列 ⚙（panel.js）
+//   藏身鍵：session 的 hidden＝true 時藏起來、不送 tick；工具列 👁、快捷鍵、點圖示都切換它（sw.js 的 toggleHidden）
+//   隱身模式：prefs.stealth，工具列 ◐ 切換；外觀全部由 CSS 的 data-look="stealth" 決定
+//   設定面板：工具列 ⚙；使用說明：工具列 ?（兩個共用 panel.js 的浮動視窗）
 //   分頁列：全部／台股／美股／國際＋自創分頁（PSPrefs.visibleTabs）；選的分頁存在 prefs.tab，所有分頁的框同步
 //   分頁裡有好幾個市場時（例如「全部」），再依 PSPrefs.sections() 分段加標題
 //   介面文字都在 i18n.js（prefs.uiLang）；漲跌顏色 prefs.upColor 由 CSS 的 data-up 決定
@@ -21,7 +21,7 @@
   const { t } = PSI18n;    // 查翻譯；不要再拿 t 當區域變數名稱（CLAUDE.md 第 4 節坑 3）
   // MIS 盤中常常沒有成交價，改用買賣價時標出來（i18n 的 tag.bid／tag.ask，提示 tag.bidHint／tag.askHint）
   const FROM_TAG = { bid: 'bid', ask: 'ask' };
-  // 偷喵配色（和圖示一致）：黑貓的炭黑底＋金色眼睛當強調色。貓的裝飾只在一般外觀出現，隱身外觀全部藏起來
+  // 偷喵配色（和圖示一致）：黑貓的炭黑底＋金色眼睛當強調色。貓的裝飾只在一般外觀出現，隱身模式全部藏起來
   const GOLD = '#FFC23D';
   // 工具列上的小貓頭（圖示裡那隻黑貓）
   const CAT_HEAD = `<svg class="logo" viewBox="0 0 32 32" width="16" height="16" aria-hidden="true">
@@ -62,7 +62,7 @@
     div.bar button.on { background: ${GOLD}; color: #2A1F00; }
     svg.logo { flex: none; margin-right: -2px; }
 
-    /* 四個角的縮放把手：滑鼠移上框才出現，一般外觀是金色貓掌印、隱身外觀是 L 形標記；拖哪個角就往哪個方向縮放 */
+    /* 四個角的縮放把手：滑鼠移上框才出現，一般外觀是金色貓掌印、隱身模式是 L 形標記；拖哪個角就往哪個方向縮放 */
     div.corner { position: absolute; z-index: 2; width: 14px; height: 14px; opacity: 0; transition: opacity .15s;
                  border: 0 solid transparent; background: url("${PAW}") center / 12px no-repeat; }
     div.box:hover div.corner { opacity: 1; }
@@ -102,7 +102,7 @@
     div.err::before { content: "\\1F640  "; }   /* 🙀 抓不到資料 */
     div.foot[hidden] { display: none; }
 
-    /* 提醒：框上方跳出貓掌泡泡（點一下或 8 秒後消失），觸發提醒的那一列淡淡標亮；隱身外觀只標亮、不跳泡泡 */
+    /* 提醒：框上方跳出貓掌泡泡（點一下或 8 秒後消失），觸發提醒的那一列淡淡標亮；隱身模式只標亮、不跳泡泡 */
     div.bubble { position: absolute; z-index: 4; top: 6px; left: 8px; right: 8px; padding: 6px 10px; border-radius: 12px;
                  background: #2A2633; border: 1.5px solid ${GOLD}; color: #fff; font-weight: 600; cursor: pointer;
                  box-shadow: 0 6px 16px rgba(0, 0, 0, .4); animation: pop .25s ease-out; }
@@ -120,11 +120,11 @@
     div.box.mini div.miniline { display: flex; }
     div.box.mini div.tabs, div.box.mini div.list, div.box.mini div.foot, div.box.mini div.corner { display: none; }
 
-    /* 按 👁 藏起來的動畫：耳朵先縮下去、框往下淡出（老闆鍵和點圖示不走這個，維持瞬間消失） */
+    /* 按 👁 藏起來的動畫：耳朵先縮下去、框往下淡出（藏身鍵和點圖示不走這個，維持瞬間消失） */
     div.box.hiding { opacity: 0; transform: translateY(8px); }
     div.box.hiding div.ears { transform: translateY(14px); }
 
-    /* 隱身外觀：看起來像網頁本身的灰色小字。漲跌只靠 ▲▼，不分顏色；所有貓的裝飾都藏起來 */
+    /* 隱身模式：看起來像網頁本身的灰色小字。漲跌只靠 ▲▼，不分顏色；所有貓的裝飾都藏起來 */
     div.box[data-look=stealth] div.ears, div.box[data-look=stealth] svg.logo { display: none; }
     div.box[data-look=stealth] tr.stale td.when::after, div.box[data-look=stealth] td.empty::before { content: none; }
     div.box[data-look=stealth] div.err::before { content: "\\26A0  "; }   /* ⚠ */
@@ -143,7 +143,7 @@
   root.innerHTML = `<style>${STYLE}</style>
     <div class="box">
       <div class="ears">${EAR(-1)}${EAR(1)}</div>
-      <div class="bar" title="PeekaStock">${CAT_HEAD}<button data-act="settings" data-i18n-title="bar.settings">⚙</button><button data-act="mini" data-i18n-title="bar.mini">▁</button><button data-act="stealth" data-i18n-title="bar.stealth">◐</button><button data-act="hide" data-i18n-title="bar.hide">👁</button><button data-act="reset" data-i18n-title="bar.reset">↺</button></div>
+      <div class="bar" title="PeekaStock">${CAT_HEAD}<button data-act="settings" data-i18n-title="bar.settings">⚙</button><button data-act="mini" data-i18n-title="bar.mini">▁</button><button data-act="stealth" data-i18n-title="bar.stealth">◐</button><button data-act="hide" data-i18n-title="bar.hide">👁</button><button data-act="reset" data-i18n-title="bar.reset">↺</button><button data-act="help" data-i18n-title="p.help">?</button></div>
       <div class="corner" data-c="nw"></div><div class="corner" data-c="ne"></div>
       <div class="corner" data-c="sw"></div><div class="corner" data-c="se"></div>
       <div class="tabs"></div>
@@ -180,10 +180,24 @@
     panel.place(el.getBoundingClientRect(), view());   // 面板跟著框移動
   }
 
+  // 擴充功能重新載入過、網頁還沒重新整理時，這個框已經失效：再碰 chrome 的功能，Chrome 會記一筆
+  // Extension context invalidated 錯誤。所以失效的框一被碰到就自己拿掉（新版的框要等網頁重新整理才會出現）
+  let timer = null;
+  function alive() {
+    if (chrome.runtime?.id) return true;
+    clearInterval(timer);
+    host.remove();
+    return false;
+  }
+  // 框和面板上的所有操作都先經過這裡（捕捉階段，比 panel.js 的監聽先跑）
+  ['pointerdown', 'click', 'change', 'keydown'].forEach((type) => root.addEventListener(type, (e) => {
+    if (!alive()) e.stopImmediatePropagation();
+  }, true));
+
   let saveTimer = null;
   const save = () => {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => chrome.storage.local.set({ [BOX_KEY]: box }), 300);
+    saveTimer = setTimeout(() => { if (alive()) chrome.storage.local.set({ [BOX_KEY]: box }); }, 300);
   };
 
   // 按住 handle 拖曳：onMove 收到「拖曳開始時畫出來的框」和滑鼠移動的距離，回傳新的 box；放開時存檔。
@@ -213,14 +227,19 @@
 
   // 工具列不會重畫，可以用 click（報價表格裡的按鈕才要用 pointerdown，見 CLAUDE.md 第 4 節坑 1）
   const send = (m) => chrome.runtime.sendMessage(m).catch(() => {});
+  function showPanel(which) {
+    const view = panel.show(which);
+    ['settings', 'help'].forEach((v) => q(`[data-act=${v}]`).classList.toggle('on', view === v));
+    apply();
+  }
   const ACTIONS = {
-    settings: () => {
-      q('[data-act=settings]').classList.toggle('on', panel.toggle());
-      apply();
-    },
+    // 設定（⚙）和使用說明（?）共用同一個浮動視窗；再按一次同一個按鈕、或按 ✕＝關閉
+    settings: () => showPanel('settings'),
+    help: () => showPanel('help'),
+    close: () => showPanel(null),
     stealth: () => PSPrefs.update({ stealth: !prefs.stealth }),
     mini: () => PSPrefs.update({ mini: !prefs.mini }),
-    // 先播 0.16 秒「耳朵縮下去」的動畫再藏（只有按 👁 才有；老闆鍵和點圖示維持瞬間消失）
+    // 先播 0.16 秒「耳朵縮下去」的動畫再藏（只有按 👁 才有；藏身鍵和點圖示維持瞬間消失）
     hide: () => {
       el.classList.add('hiding');
       setTimeout(() => send({ to: 'sw', cmd: 'toggleHidden' }), 160);
@@ -231,6 +250,20 @@
       chrome.storage.local.remove(BOX_KEY);   // 刪掉存檔＝回到預設，其他分頁也會收到變更
     },
   };
+  // 在網頁空白處點兩下＝藏身／叫出（判斷見 blank.js；設定 prefs.dblHide 可關掉）。藏起來時框還在網頁裡，照樣聽得到
+  const hideFromPage = () => (session.hidden ? send({ to: 'sw', cmd: 'toggleHidden' }) : ACTIONS.hide());
+  document.addEventListener('dblclick', (e) => {
+    if (!prefs.dblHide || !alive()) return;
+    if (PSBlank.isBlank(e, window.getSelection()?.toString(), host)) hideFromPage();
+  });
+  // 網頁內按鍵（預設 Esc 連按兩下，設定面板可錄製別的鍵）。面板裡的按鍵不會傳到這裡（panel.js 擋掉了）
+  let lastKey = null;
+  window.addEventListener('keydown', (e) => {
+    if (PSBlank.isTyping(e) || !alive()) return;
+    const r = PSBlank.keyFires(e, prefs.hideKey, lastKey, Date.now());
+    lastKey = r.last;
+    if (r.fire) hideFromPage();
+  });
   root.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-act]');
     if (b) ACTIONS[b.dataset.act]();
@@ -242,7 +275,7 @@
 
   const fmtPrice = (v) => (v == null ? '—'
     : v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: v < 10 ? 3 : 2 }));
-  // 漲跌用 ▲▼（台灣看盤習慣），隱身外觀拿掉顏色也看得出方向
+  // 漲跌用 ▲▼（台灣看盤習慣），隱身模式拿掉顏色也看得出方向
   const ARROW = { up: '▲', down: '▼', '': '' };
   const dirOf = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : '');
   const fmtPct = (v) => (v == null ? '' : `${ARROW[dirOf(v)]}${Math.abs(v).toFixed(2)}%`);
@@ -375,7 +408,7 @@
   // ---------- 提醒的貓掌泡泡 ----------
 
   // 佇列（session.alertQueue，背景程式放進來）一次顯示一個，停 8 秒或被點掉就請背景程式拿掉；
-  // 框藏起來或分頁看不見時不顯示、不計時，等看得見再補顯示。隱身外觀時泡泡由 CSS 藏起來，只剩那一列標亮
+  // 框藏起來或分頁看不見時不顯示、不計時，等看得見再補顯示。隱身模式時泡泡由 CSS 藏起來，只剩那一列標亮
   const BUBBLE_MS = 8000;
   const bubble = q('div.bubble');
   let showing = null, bubbleTimer = null;
@@ -418,10 +451,9 @@
 
   // ---------- tick ----------
 
-  let timer = null;
   function tick() {
-    if (!chrome.runtime?.id) return clearInterval(timer);   // 擴充功能重新載入過，這個框失效了
-    if (session.hidden) return;   // 老闆鍵：藏起來時不抓也不畫
+    if (!alive()) return;
+    if (session.hidden) return;   // 藏身鍵：藏起來時不抓也不畫
     render();   // 就算不抓，也要重畫（資料時間到了要變灰）
     showAlerts();
     if (document.visibilityState !== 'visible') return;

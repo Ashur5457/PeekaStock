@@ -2,7 +2,7 @@
 //   quotes：key → quote（見 sources.js）
 //   status：群組 id → { ok, error, at, fails, count }，懸浮框顯示錯誤用
 //   misLag：MIS 盤中延遲統計（CLAUDE.md 7.2 留下的問題：長時間觀察 MIS 延遲）
-//   hidden：老闆鍵狀態（true＝所有分頁的框都藏起來）
+//   hidden：藏身鍵狀態（true＝所有分頁的框都藏起來）
 //   alertQueue：還沒顯示完的提醒（框顯示貓掌泡泡，顯示完送 dismissAlert 拿掉）；alertFired：今天響過的提醒 id
 // 沒有分頁送 tick（沒有看得見的分頁）或框藏起來時，就完全不發請求；多個 tick 同時進來共用同一次抓取。
 // 例外：使用者打開「背景提醒」時，chrome.alarms 每 1 分鐘只抓有設提醒的項目（PSAlerts.watched），只在開盤時段。
@@ -22,7 +22,7 @@ const GROUPS = [
 const state = {};
 let running = null;
 
-// 老闆鍵：快捷鍵、點工具列圖示、框上的 👁 都切換同一個 hidden，所有分頁的框監聽它跟著藏起來
+// 藏身鍵：快捷鍵、點工具列圖示、框上的 👁 都切換同一個 hidden，所有分頁的框監聽它跟著藏起來
 async function toggleHidden() {
   const { hidden = false } = await chrome.storage.session.get('hidden');
   await chrome.storage.session.set({ hidden: !hidden });

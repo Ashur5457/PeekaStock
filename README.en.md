@@ -2,7 +2,7 @@
 
 **A hideable stock ticker for Taiwan and US markets: a small floating box in the corner of any web page, one shortcut away from vanishing.**
 
-**Draggable, resizable floating box**, **boss key**, **stealth look**, **price & big-move alerts**, **watchlist with custom tabs**, and a UI in six languages. Quotes only — no trading.
+**Draggable, resizable floating box**, **hide key**, **stealth mode**, **price & big-move alerts**, **watchlist with custom tabs**, and a UI in six languages. Quotes only — no trading.
 
 [![Version](https://img.shields.io/badge/version-v0.7.0-FFC23D)](manifest.json)
 [![Chrome](https://img.shields.io/badge/Chrome-desktop-4285F4)](#-install)
@@ -25,13 +25,15 @@ I wanted to glance at the market during work, but a trading app is too conspicuo
 
 ## ✨ Features
 
-<img src="docs/readme/box.png" width="260" alt="Floating box"> <img src="docs/readme/alert.png" width="260" alt="Paw bubble alert"> <img src="docs/readme/stealth.png" width="260" alt="Stealth look">
+<img src="docs/readme/box.png" width="260" alt="Floating box"> <img src="docs/readme/alert.png" width="260" alt="Paw bubble alert"> <img src="docs/readme/stealth.png" width="260" alt="Stealth mode">
 
 - **On every page**: the box appears in the corner of every tab, and all tabs share the same position and size. Drag it, resize it from any corner; it stays visible in full-screen video.
-- **Boss key**: press **Alt+Shift+H** (or click the PeekaStock toolbar icon) to hide the box in all tabs at once. While hidden, nothing is fetched.
-- **Stealth look ◐**: transparent background, gray text, ▲▼ instead of colors — it looks like part of the page.
+- **Hide key**: press **Alt+Shift+H** (or click the PeekaStock toolbar icon) to hide the box in all tabs at once. While hidden, nothing is fetched.
+- **Double-click empty space**: double-click an empty spot on the page to hide or show the box too (text, links, inputs and videos don't count; can be turned off in settings).
+- **Press Esc twice**: with the page focused, press Esc twice quickly to hide or show the box; record any other key in settings (e.g. a single Esc or F2).
+- **Stealth mode ◐**: transparent background, gray text, ▲▼ instead of colors — it looks like part of the page.
 - **Mini peek ▁**: the box shrinks to cat ears and one line, showing the next quote every 4 s.
-- **Alerts**: when a quote moves more than ±3% (adjustable) or hits your target price, a paw bubble pops up in the box (e.g. "NVDA up ▲3.2%!"); in stealth look only the row is highlighted. No system notifications.
+- **Alerts**: when a quote moves more than ±3% (adjustable) or hits your target price, a paw bubble pops up in the box (e.g. "NVDA up ▲3.2%!"); in stealth mode only the row is highlighted. No system notifications.
 - **Watchlist**: type `2330` or `AAPL` to add; listed (TWSE) / OTC (TPEx) / US is detected automatically. US stocks show tickers, Taiwan stocks show names.
 - **Tabs**: `All | Taiwan | US | World`, plus your own tabs (e.g. "Tech", "Dividend"). A stock can be in several tabs.
 - **World indices**: 16 indices from Taiwan, US, China, Hong Kong, Japan, Korea, Singapore, UK, France and Germany, each can be turned on or off.
@@ -95,14 +97,14 @@ Click the puzzle button 🧩 in the toolbar and pin PeekaStock (clicking the ico
 
 ## 🎬 Usage
 
-1. Hover over the box to show the toolbar: **⚙** settings, **▁** mini peek, **◐** stealth look, **👁** hide, **↺** reset position. Drag the toolbar (cat head) to move the box.
+1. Hover over the box to show the toolbar: **⚙** settings, **▁** mini peek, **◐** stealth mode, **👁** hide, **↺** reset position, **?** how it works. Drag the toolbar (cat head) to move the box.
 2. **⚙ Settings**:
    - **Watchlist**: enter a code and click Add; ↑↓ to reorder, ✕ to remove
    - **Custom tabs**: add, ✎ rename, ↑↓, ✕; tick what goes into a tab under "Add to tab"
    - **Indices**: turn each on or off
    - **Alerts**: big moves ±% (default 3%); for a price alert tap 🔔 on a watchlist row and set an upper/lower price; with "Background" on, alerted items are also checked once a minute while the box is out of sight (market hours only), and the alert pops up the next time you see the box
    - **Display**: UI language, up/down colors
-3. **Boss key Alt+Shift+H**: hides the box in all tabs; press again to bring it back. Clicking the PeekaStock toolbar icon does the same.
+3. **Hide key Alt+Shift+H**: hides the box in all tabs; press again to bring it back. Clicking the PeekaStock toolbar icon does the same.
 
 <img src="docs/readme/panel.png" width="480" alt="Settings panel">
 
@@ -142,7 +144,7 @@ PeekaStock only displays quotes and **is not investment advice**. Quotes may be 
 ```
 PeekaStock/
 ├── manifest.json         # Extension manifest (MV3)
-├── sw.js                 # Background: scheduling, fetching, boss key, code lookup
+├── sw.js                 # Background: scheduling, fetching, hide key, code lookup
 ├── sources.js            # Data sources: TWSE MIS, Yahoo spark (parsing and error codes)
 ├── schedule.js           # What to fetch this tick (market open, interval, back-off)
 ├── markets.js            # Market table (time zones, sessions), index table
@@ -151,6 +153,7 @@ PeekaStock/
 ├── panel.js              # ⚙ settings panel
 ├── alerts.js             # Alert rules: price targets, big moves, once a day
 ├── box.js                # Box position and size math
+├── blank.js              # Double-click and Esc hide checks
 ├── i18n.js               # UI strings (one line per string, six languages side by side)
 ├── _locales/             # Extension description and shortcut text in six languages
 ├── icons/                # Extension icons

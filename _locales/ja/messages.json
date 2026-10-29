@@ -6,6 +6,6 @@
     "message": "PeekaStock：隠す／表示（Alt+Shift+H）"
   },
   "cmdToggleHide": {
-    "message": "PeekaStock を隠す／表示（すべてのタブ）"
+    "message": "隠れキー：PeekaStock を隠す／表示（すべてのタブ）"
   }
 }

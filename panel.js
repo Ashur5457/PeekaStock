@@ -45,11 +45,25 @@ globalThis.PSPanel ??= (() => {
     div.aedit { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 2px 0 6px; padding: 6px 8px;
                 border-radius: 8px; background: #2A2633; color: #bbb; }
     div.aedit input.num { width: 6em; }
-    div.phint { margin: -2px 0 4px; color: #999; font-size: 11px; }`;
+    div.phint { margin: -2px 0 4px; color: #999; font-size: 11px; }
+    div.phelp[hidden], div.pbody[hidden] { display: none; }
+    div.hrow { display: flex; gap: 8px; margin: 8px 0; }
+    span.hico { flex: none; width: 1.6em; text-align: center; color: #FFC23D; }
+    kbd.hk { padding: 0 6px; border: 1px solid #555; border-radius: 4px; background: #111; color: #FFC23D; font: 11px/18px system-ui, sans-serif; }
+    button.add.rec { padding: 1px 8px; font-size: 11px; }
+    button.add.rec.on { background: #E5534B; color: #fff; }`;
+
+  // 使用說明（工具列 ?）：[圖示, i18n key, 圖示的 i18n key（「買」標記每種語言不同）]
+  const HELP = [
+    ['👁', 'help.hide'], ['⌨', 'help.keys'], ['◐', 'help.stealth'], ['▁', 'help.mini'], ['↺', 'help.move'],
+    ['🔔', 'help.alerts'], ['💤', 'help.stale'], ['', 'help.tag', 'tag.bid'], ['⏱', 'help.delay'],
+  ];
 
   const HTML = `
     <div class="settings" hidden>
-      <div class="phead"><span data-i18n="p.title"></span><button class="pclose" data-act="settings" data-i18n-title="p.close">✕</button></div>
+      <div class="phead"><span class="ptitle" data-i18n="p.title"></span><button class="pclose" data-act="close" data-i18n-title="p.close">✕</button></div>
+      <div class="phelp" hidden>${HELP.map(([icon, key, iconKey]) => `<div class="hrow"><span class="hico"${iconKey ? ` data-i18n="${iconKey}"` : ''}>${icon}</span><span data-i18n="${key}"></span></div>`).join('')}</div>
+      <div class="pbody">
       <div class="psec" data-i18n="p.watch"></div>
       <form class="padd" data-form="watch"><input class="code" data-i18n-placeholder="p.codeHolder" autocomplete="off" maxlength="12"><button class="add" type="submit" data-i18n="p.add"></button></form>
       <div class="pmsg" data-msg="watch"></div>
@@ -80,9 +94,18 @@ globalThis.PSPanel ??= (() => {
         <label class="idx"><input type="radio" class="idx" name="upColor" data-pref="upColor" value="red"><span data-i18n="opt.redUp"></span></label>
         <label class="idx"><input type="radio" class="idx" name="upColor" data-pref="upColor" value="green"><span data-i18n="opt.greenUp"></span></label>
       </div></div>
+      <div class="irow"><span class="region" data-i18n="p.hide"></span><div class="ichecks">
+        <label class="idx"><input type="checkbox" class="idx" data-pref="dblHide"><span data-i18n="p.dblHide"></span></label>
+      </div></div>
+      <div class="irow"><span class="region" data-i18n="p.hideKey"></span><div class="ichecks">
+        <label class="idx"><input type="checkbox" class="idx" data-hk="on"><kbd class="hk"></kbd></label>
+        <button class="add rec" type="button" data-op="record" data-i18n="p.record"></button>
+        <label class="idx"><input type="checkbox" class="idx" data-hk="double"><span data-i18n="p.keyDouble"></span></label>
+      </div></div>
       <div class="irow"><span class="region" data-i18n="p.debug"></span><div class="ichecks">
         <label class="idx"><input type="checkbox" class="idx" data-pref="showLag"><span data-i18n="p.showLag"></span></label>
       </div></div>
+      </div>
     </div>`;
 
   function span(cls, text) {
@@ -175,6 +198,7 @@ globalThis.PSPanel ??= (() => {
     const say = (which, text) => { q(`[data-msg=${which}]`).textContent = text; };
     let editing = null;   // 下方「放進分頁」正在編輯哪個自創分頁
     let belling = null;   // 哪一檔自選股的到價提醒正在編輯（🔔 展開）
+    let recording = false;   // 正在錄製藏身用的按鍵：下一個按鍵就存起來
 
     // 在面板裡打字時，按鍵不要傳給網頁（例如 YouTube 的 L＝快轉 10 秒、K＝暫停）
     ['keydown', 'keyup', 'keypress'].forEach((type) => panel.addEventListener(type, (e) => e.stopPropagation()));
@@ -248,6 +272,11 @@ globalThis.PSPanel ??= (() => {
       panel.querySelectorAll('input[data-pref=upColor]').forEach((r) => { r.checked = r.value === p.upColor; });
       q('input[data-pref=showLag]').checked = p.showLag;
       q('input[data-pref=bgAlert]').checked = p.bgAlert;
+      q('input[data-pref=dblHide]').checked = p.dblHide;
+      q('input[data-hk=on]').checked = p.hideKey.on;
+      q('input[data-hk=double]').checked = p.hideKey.double;
+      q('kbd.hk').textContent = recording ? t('p.recording') : PSBlank.keyLabel(p.hideKey);
+      q('button.rec').classList.toggle('on', recording);
       q('input[data-move=on]').checked = p.moveAlert.on;
       q('input[data-move=pct]').value = p.moveAlert.pct;
     }
@@ -352,8 +381,26 @@ globalThis.PSPanel ??= (() => {
       if (e.key === 'Enter' && e.target.dataset.alert) saveAlert(belling, true);
     });
 
+    // ---------- 藏身按鍵（錄製） ----------
+
+    function toggleRecord() {
+      recording = !recording;
+      render();
+    }
+    // 錄製中按的鍵（Esc 也算）直接存起來；按鍵本來就不會傳給網頁（上面擋掉了）
+    panel.addEventListener('keydown', async (e) => {
+      if (!recording) return;
+      const hk = PSBlank.recorded(e, getPrefs().hideKey);
+      if (!hk) return;   // 只按了 Ctrl／Alt／Shift，等下一個鍵
+      e.preventDefault();
+      recording = false;
+      await PSPrefs.update({ hideKey: hk });
+      render();
+    });
+
     // 只改面板畫面、或要讀輸入框的動作；其他的查 OPS 存回 prefs
     const LOCAL = {
+      record: toggleRecord,
       ren: startRename,
       bell: toggleBell,
       asave: (key) => saveAlert(key, true),
@@ -376,6 +423,7 @@ globalThis.PSPanel ??= (() => {
     // 選單和勾選框：顯示設定（data-pref）、大漲大跌（data-move）、指數開關（data-sym）、放進分頁（data-key）
     const CHANGES = {
       pref: (box) => ({ [box.dataset.pref]: box.type === 'checkbox' ? box.checked : box.value }),
+      hk: (box, p) => ({ hideKey: { ...p.hideKey, [box.dataset.hk]: box.checked } }),
       move: (box, p) => ({ moveAlert: { ...p.moveAlert, [box.dataset.move]: box.type === 'checkbox' ? box.checked : clampPct(box.value) } }),
       sym: (box, p) => ({ indices: { ...p.indices, [box.dataset.sym]: box.checked } }),
       key: (box, p) => ({ tabs: PSPrefs.setInTab(p.tabs, editing, box.dataset.key, box.checked) }),
@@ -411,18 +459,27 @@ globalThis.PSPanel ??= (() => {
       panel.style.top = `${spot.top}px`;
     }
 
-    function toggle(open = !isOpen()) {
-      panel.hidden = !open;
-      if (open) {
+    // 打開設定或使用說明（同一個浮動視窗）；再按一次同一個、或傳 null＝關閉。回傳現在打開的是哪個
+    let view = null;
+    function show(which) {
+      view = which && (panel.hidden || view !== which) ? which : null;
+      panel.hidden = !view;
+      recording = false;
+      q('div.pbody').hidden = view !== 'settings';
+      q('div.phelp').hidden = view !== 'help';
+      const title = q('span.ptitle');
+      title.dataset.i18n = view === 'help' ? 'p.help' : 'p.title';
+      title.textContent = t(title.dataset.i18n);
+      if (view === 'settings') {
         say('watch', '');
         say('tab', '');
         render();
       }
-      return open;
+      return view;
     }
 
-    return { render, toggle, place, isOpen };
+    return { render, show, place, isOpen };
   }
 
-  return { CSS, HTML, create };
+  return { CSS, HTML, HELP, create };
 })();

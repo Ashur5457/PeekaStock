@@ -6,6 +6,6 @@
     "message": "PeekaStock: 숨기기 / 표시 (Alt+Shift+H)"
   },
   "cmdToggleHide": {
-    "message": "PeekaStock 숨기기 / 표시 (모든 탭)"
+    "message": "숨기기 키: PeekaStock 숨기기 / 표시 (모든 탭)"
   }
 }
