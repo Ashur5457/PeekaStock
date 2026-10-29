@@ -25,6 +25,8 @@
 
 ## ✨ 能做什麼
 
+<img src="docs/readme/box.png" width="260" alt="懸浮框"> <img src="docs/readme/alert.png" width="260" alt="貓掌泡泡提醒"> <img src="docs/readme/stealth.png" width="260" alt="隱身外觀">
+
 - **任何網頁都有**：框出現在每個分頁的角落，所有分頁共用同一個位置和大小。可拖曳、四個角都能縮放，全螢幕看影片時也在。
 - **老闆鍵**：按 **Alt+Shift+H**（或點工具列的 PeekaStock 圖示），所有分頁的框同時藏起來；藏起來時完全不抓資料。
 - **隱身外觀 ◐**：背景透明、文字變灰、漲跌只用 ▲▼ 不分顏色，看起來像網頁本身的小字。
@@ -77,9 +79,15 @@ Chrome 網址列輸入 `chrome://extensions`，打開右上角的「**開發人�
 
 按「**載入未封裝項目**」，選 `PeekaStock-main` 資料夾（裡面要直接看得到 `manifest.json`）
 
+<img src="docs/readme/step3.png" width="640" alt="3. 載入">
+
+<img src="docs/readme/step3b.png" width="420" alt="3. 載入">
+
 ### 4. 釘選圖示
 
 按工具列的拼圖按鈕 🧩，把 PeekaStock 旁邊的圖釘點亮（之後點這個圖示就能藏起／叫出框）
+
+<img src="docs/readme/step4.png" width="144" alt="4. 釘選圖示">
 
 ### 5. 重新整理網頁
 
@@ -95,6 +103,8 @@ Chrome 網址列輸入 `chrome://extensions`，打開右上角的「**開發人�
    - **提醒**：大漲大跌 ±%（預設 3%）；到價提醒在自選股那一列按 🔔 設上限／下限；打開「背景提醒」後，框看不見時也每 1 分鐘檢查有設提醒的股票（只在開盤時段），提醒在下次看到框時跳出
    - **顯示**：介面語言、漲跌顏色
 3. **老闆鍵 Alt+Shift+H**：所有分頁的框一起藏起來，再按一次叫回來。也可以點工具列的 PeekaStock 圖示。
+
+<img src="docs/readme/panel.png" width="480" alt="設定面板">
 
 > [!TIP]
 > 如果 Alt+Shift+H 沒反應，可能被其他擴充功能占用了。到 `chrome://extensions/shortcuts` 幫 PeekaStock 換一組快捷鍵。

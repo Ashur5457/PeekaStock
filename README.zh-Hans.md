@@ -25,6 +25,8 @@
 
 ## ✨ 能做什么
 
+<img src="docs/readme/box.png" width="260" alt="悬浮框"> <img src="docs/readme/alert.png" width="260" alt="猫掌气泡提醒"> <img src="docs/readme/stealth.png" width="260" alt="隐身外观">
+
 - **任何网页都有**：框出现在每个标签页的角落，所有标签页共用同一个位置和大小。可拖动、四个角都能缩放，全屏看视频时也在。
 - **老板键**：按 **Alt+Shift+H**（或点工具栏的 PeekaStock 图标），所有标签页的框同时藏起来；藏起来时完全不获取数据。
 - **隐身外观 ◐**：背景透明、文字变灰、涨跌只用 ▲▼ 不分颜色，看起来像网页本身的小字。
@@ -77,9 +79,15 @@ Chrome 地址栏输入 `chrome://extensions`，打开右上角的「**开发者�
 
 点「**加载已解压的扩展程序**」，选 `PeekaStock-main` 文件夹（里面要直接看得到 `manifest.json`）
 
+<img src="docs/readme/step3.png" width="640" alt="3. 加载">
+
+<img src="docs/readme/step3b.png" width="420" alt="3. 加载">
+
 ### 4. 固定图标
 
 点工具栏的拼图按钮 🧩，把 PeekaStock 旁边的图钉点亮（之后点这个图标就能藏起／叫出框）
+
+<img src="docs/readme/step4.png" width="144" alt="4. 固定图标">
 
 ### 5. 刷新网页
 
@@ -95,6 +103,8 @@ Chrome 地址栏输入 `chrome://extensions`，打开右上角的「**开发者�
    - **提醒**：大涨大跌 ±%（默认 3%）；到价提醒在自选股那一行按 🔔 设上限／下限；打开「后台提醒」后，框看不见时也每 1 分钟检查有设提醒的股票（只在开盘时段），提醒在下次看到框时弹出
    - **显示**：界面语言、涨跌颜色
 3. **老板键 Alt+Shift+H**：所有标签页的框一起藏起来，再按一次叫回来。也可以点工具栏的 PeekaStock 图标。
+
+<img src="docs/readme/panel.png" width="480" alt="设置面板">
 
 > [!TIP]
 > 如果 Alt+Shift+H 没反应，可能被其他扩展程序占用了。到 `chrome://extensions/shortcuts` 给 PeekaStock 换一组快捷键。

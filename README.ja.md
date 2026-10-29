@@ -25,6 +25,8 @@
 
 ## ✨ できること
 
+<img src="docs/readme/box.png" width="260" alt="フローティング枠"> <img src="docs/readme/alert.png" width="260" alt="肉球の吹き出しアラート"> <img src="docs/readme/stealth.png" width="260" alt="ステルス表示">
+
 - **どのページにも表示**：すべてのタブの隅に枠が表示され、位置とサイズは全タブで共通。ドラッグで移動、四隅でサイズ変更でき、全画面の動画でも表示されます。
 - **ボスキー**：**Alt+Shift+H**（またはツールバーの PeekaStock アイコン）で全タブの枠を一斉に隠します。隠している間はデータを取得しません。
 - **ステルス表示 ◐**：背景は透明、文字はグレー、騰落は色を使わず ▲▼ だけ。ページの一部のように見えます。
@@ -77,9 +79,15 @@ flowchart LR
 
 「**パッケージ化されていない拡張機能を読み込む**」で `PeekaStock-main` フォルダ（`manifest.json` が直下にあるもの）を選択
 
+<img src="docs/readme/step3.png" width="640" alt="3. 読み込む">
+
+<img src="docs/readme/step3b.png" width="420" alt="3. 読み込む">
+
 ### 4. アイコンを固定
 
 ツールバーのパズルボタン 🧩 から PeekaStock をピン留め（アイコンを押すと枠の表示／非表示）
+
+<img src="docs/readme/step4.png" width="144" alt="4. アイコンを固定">
 
 ### 5. ページを再読み込み
 
@@ -95,6 +103,8 @@ flowchart LR
    - **アラート**：急騰・急落 ±%（初期値 3%）。価格アラートはウォッチリストの行の 🔔 で上限／下限を設定。「バックグラウンド」をオンにすると、枠が見えないときも取引時間中は 1 分ごとにアラート設定銘柄を確認し、次に枠が見えたときに表示
    - **表示**：表示言語、騰落の色
 3. **ボスキー Alt+Shift+H**：全タブの枠を隠し、もう一度押すと再表示。ツールバーの PeekaStock アイコンでも同じです。
+
+<img src="docs/readme/panel.png" width="480" alt="設定パネル">
 
 > [!TIP]
 > Alt+Shift+H が効かない場合は、他の拡張機能が使っているかもしれません。`chrome://extensions/shortcuts` で別のショートカットを設定してください。

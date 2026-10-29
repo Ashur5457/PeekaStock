@@ -25,6 +25,8 @@ Quería echar un vistazo al mercado durante el trabajo, pero abrir una aplicaci�
 
 ## ✨ Funciones
 
+<img src="docs/readme/box.png" width="260" alt="Ventana flotante"> <img src="docs/readme/alert.png" width="260" alt="Alerta con bocadillo"> <img src="docs/readme/stealth.png" width="260" alt="Modo discreto">
+
 - **En todas las páginas**: la ventana aparece en la esquina de cada pestaña y todas comparten posición y tamaño. Se arrastra, se redimensiona desde cualquier esquina y sigue visible en vídeos a pantalla completa.
 - **Tecla del jefe**: pulsa **Alt+Shift+H** (o el icono de PeekaStock en la barra) para ocultar la ventana en todas las pestañas a la vez. Mientras está oculta no se descarga nada.
 - **Modo discreto ◐**: fondo transparente, texto gris y ▲▼ en lugar de colores; parece parte de la página.
@@ -77,9 +79,15 @@ Abre `chrome://extensions` y activa el **Modo de desarrollador** (arriba a la de
 
 Pulsa **Cargar descomprimida** y elige la carpeta `PeekaStock-main` (la que contiene directamente `manifest.json`)
 
+<img src="docs/readme/step3.png" width="640" alt="3. Cargar">
+
+<img src="docs/readme/step3b.png" width="420" alt="3. Cargar">
+
 ### 4. Fijar el icono
 
 Pulsa el botón de pieza de puzle 🧩 de la barra y fija PeekaStock (el icono oculta o muestra la ventana)
+
+<img src="docs/readme/step4.png" width="144" alt="4. Fijar el icono">
 
 ### 5. Recargar las páginas
 
@@ -95,6 +103,8 @@ Pulsa el botón de pieza de puzle 🧩 de la barra y fija PeekaStock (el icono o
    - **Alertas**: grandes movimientos ±% (3% por defecto); para una alerta de precio pulsa 🔔 en la fila y fija un precio superior/inferior; con «En segundo plano» activado, los valores con alerta se comprueban cada minuto aunque no veas la ventana (solo con el mercado abierto) y el aviso aparece la próxima vez que la veas
    - **Vista**: idioma y colores
 3. **Tecla del jefe Alt+Shift+H**: oculta la ventana en todas las pestañas; pulsa otra vez para mostrarla. El icono de PeekaStock hace lo mismo.
+
+<img src="docs/readme/panel.png" width="480" alt="Panel de ajustes">
 
 > [!TIP]
 > Si Alt+Shift+H no hace nada, puede que otra extensión lo use. Asigna otro atajo en `chrome://extensions/shortcuts`.

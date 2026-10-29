@@ -25,6 +25,8 @@
 
 ## ✨ 기능
 
+<img src="docs/readme/box.png" width="260" alt="플로팅 창"> <img src="docs/readme/alert.png" width="260" alt="고양이 발바닥 말풍선 알림"> <img src="docs/readme/stealth.png" width="260" alt="스텔스 모드">
+
 - **모든 웹페이지에 표시**: 모든 탭의 구석에 창이 나타나고, 위치와 크기는 모든 탭이 공유합니다. 드래그로 이동, 네 모서리로 크기 조절이 되며 전체 화면 동영상에서도 보입니다.
 - **보스 키**: **Alt+Shift+H**(또는 툴바의 PeekaStock 아이콘)를 누르면 모든 탭의 창이 한꺼번에 숨겨집니다. 숨긴 동안에는 데이터를 가져오지 않습니다.
 - **스텔스 모드 ◐**: 배경은 투명, 글자는 회색, 등락은 색 없이 ▲▼만 사용해 웹페이지의 일부처럼 보입니다.
@@ -77,9 +79,15 @@ flowchart LR
 
 **압축해제된 확장 프로그램을 로드합니다**를 누르고 `PeekaStock-main` 폴더(`manifest.json`이 바로 보이는 폴더)를 선택합니다
 
+<img src="docs/readme/step3.png" width="640" alt="3. 로드">
+
+<img src="docs/readme/step3b.png" width="420" alt="3. 로드">
+
 ### 4. 아이콘 고정
 
 툴바의 퍼즐 버튼 🧩에서 PeekaStock을 고정합니다(아이콘을 누르면 창 숨기기／표시)
+
+<img src="docs/readme/step4.png" width="144" alt="4. 아이콘 고정">
 
 ### 5. 페이지 새로고침
 
@@ -95,6 +103,8 @@ flowchart LR
    - **알림**: 급등락 ±%(기본 3%). 가격 알림은 관심종목 줄의 🔔에서 상한/하한 설정. "백그라운드"를 켜면 창이 안 보일 때도 장중 1분마다 알림 설정 종목을 확인하고, 다음에 창이 보일 때 표시
    - **표시**: UI 언어, 등락 색상
 3. **보스 키 Alt+Shift+H**: 모든 탭의 창을 숨기고, 다시 누르면 나타납니다. 툴바의 PeekaStock 아이콘도 같습니다.
+
+<img src="docs/readme/panel.png" width="480" alt="설정 패널">
 
 > [!TIP]
 > Alt+Shift+H가 동작하지 않으면 다른 확장 프로그램이 쓰고 있을 수 있습니다. `chrome://extensions/shortcuts`에서 다른 단축키를 지정하세요.

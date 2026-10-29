@@ -25,6 +25,8 @@ I wanted to glance at the market during work, but a trading app is too conspicuo
 
 ## ✨ Features
 
+<img src="docs/readme/box.png" width="260" alt="Floating box"> <img src="docs/readme/alert.png" width="260" alt="Paw bubble alert"> <img src="docs/readme/stealth.png" width="260" alt="Stealth look">
+
 - **On every page**: the box appears in the corner of every tab, and all tabs share the same position and size. Drag it, resize it from any corner; it stays visible in full-screen video.
 - **Boss key**: press **Alt+Shift+H** (or click the PeekaStock toolbar icon) to hide the box in all tabs at once. While hidden, nothing is fetched.
 - **Stealth look ◐**: transparent background, gray text, ▲▼ instead of colors — it looks like part of the page.
@@ -77,9 +79,15 @@ Open `chrome://extensions` and turn on **Developer mode** (top right)
 
 Click **Load unpacked** and choose the `PeekaStock-main` folder (the one that directly contains `manifest.json`)
 
+<img src="docs/readme/step3.png" width="640" alt="3. Load">
+
+<img src="docs/readme/step3b.png" width="420" alt="3. Load">
+
 ### 4. Pin the icon
 
 Click the puzzle button 🧩 in the toolbar and pin PeekaStock (clicking the icon hides/shows the box)
+
+<img src="docs/readme/step4.png" width="144" alt="4. Pin the icon">
 
 ### 5. Reload your pages
 
@@ -95,6 +103,8 @@ Click the puzzle button 🧩 in the toolbar and pin PeekaStock (clicking the ico
    - **Alerts**: big moves ±% (default 3%); for a price alert tap 🔔 on a watchlist row and set an upper/lower price; with "Background" on, alerted items are also checked once a minute while the box is out of sight (market hours only), and the alert pops up the next time you see the box
    - **Display**: UI language, up/down colors
 3. **Boss key Alt+Shift+H**: hides the box in all tabs; press again to bring it back. Clicking the PeekaStock toolbar icon does the same.
+
+<img src="docs/readme/panel.png" width="480" alt="Settings panel">
 
 > [!TIP]
 > If Alt+Shift+H does nothing, another extension may be using it. Set a different shortcut at `chrome://extensions/shortcuts`.

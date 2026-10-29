@@ -241,7 +241,7 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
   - [x] 圖示（2026-10-30 定案）：**黑貓「偷喵」躲在折線圖牆後面探頭**——紅色折線＋實心大箭頭往右上、藍色長條頂端貼著折線，兩者都在貓前面；奶油色圓角背景；有黑色卡通外框。`icons/icon.svg` 是原稿，`tools/make_icons.ps1` 用無頭 Chrome 畫成 512px 再縮成 16／32／48／128 PNG（角落透明）；manifest 加 `icons`、`action.default_icon`；測試檢查圖示檔存在
     - 討論過程（之後改圖示可參考）：PowerShell 畫的幾何圖形太死板 → 改用 SVG＋Chrome 輸出；整片青綠色沒活力；「只有頭＋爪子」不自然，要畫整隻坐著的貓、被牆擋住一半（使用者的照片：黑貓躲在牆角、貓從門縫偷看）；單根紅 K 棒像爆竹；K 棒要照規則排（時間左到右、最高的在最右邊）；看板／螢幕太呆板；參考網路股票圖示的「長條＋折線箭頭」；國際上紅綠漲跌習慣相反，但箭頭方向已表達上漲，所以紅色可以
     - 名字聯想：「偷喵」＝偷瞄的諧音；Peeky 接近 peekaboo（躲貓貓）
-  - [ ] README 截圖（使用者用真的 Chrome 截：框、設定面板、隱身外觀、選資料夾、釘選圖示），放 `docs/readme/`
+  - [x] 2026-10-30 README 截圖（使用者用真的 Chrome 截），放 `docs/readme/`：`box`／`alert`／`stealth`（能做什麼，三張並排）、`panel`（使用）、`step3`／`step3b`／`step4`（安裝）。選資料夾那張只留表頭＋PeekaStock-main 一列＋按鈕（路徑列有使用者名稱、其他資料夾和雲端硬碟帳號都裁掉）；釘選那張只留 PeekaStock 和拼圖按鈕
   - [x] 2026-10-30 README 安裝步驟改成 FreeLiveSub 的格式（### 小標題＋截圖）；`docs/readme/step2.png`（開發人員模式＋載入未封裝項目，通用畫面）從 FreeLiveSub 複製；FreeLiveSub 的 step3／step4 拍到它自己的資料夾和圖示，不能沿用
   - [x] 2026-10-30 `git init -b main`＋第一次提交 `ca4fe75`（身分 Ashur5457＋noreply，只設本 repo；`.gitattributes` 照 FreeLiveSub：文字檔 LF、PNG 二進位）
   - [x] 2026-10-30 使用者同意後推上 GitHub（公開 repo `Ashur5457/PeekaStock`）。CLAUDE.md 的資料夾圖拿掉含 Windows 使用者名稱的完整路徑
