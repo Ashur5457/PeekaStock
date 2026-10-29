@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-<!-- PeekStock icon: a black cat peeking from behind a rising chart (red trend arrow + blue bars). -->
+<!-- PeekaStock icon: a black cat peeking from behind a rising chart (red trend arrow + blue bars). -->
 <!-- Source of truth for icons/*.png; regenerate with: powershell -File tools/make_icons.ps1 -->
 <defs>
   <linearGradient id="bgps" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF3E4"/><stop offset="1" stop-color="#FFE0CC"/></linearGradient>

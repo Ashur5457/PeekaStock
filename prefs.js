@@ -18,6 +18,10 @@ globalThis.PSPrefs ??= (() => {
     uiLang: 'auto',   // 介面語言：auto（跟瀏覽器）或 i18n.js 的 UI_LANGS
     upColor: 'red',   // 漲跌顏色：red＝紅漲綠跌（台灣習慣）、green＝綠漲紅跌（美國習慣）
     showLag: false,   // 框底部顯示 MIS 延遲統計（開發觀察用，一般使用者不需要）
+    mini: false,      // 迷你偷看模式：框只剩貓耳朵＋一行報價（每 4 秒換一檔）
+    alerts: {},       // 到價提醒：{ [項目 key]: { above?, below? } }（見 alerts.js）
+    moveAlert: { on: true, pct: 3 },   // 大漲大跌提醒：漲跌幅 ≥ ±pct% 就提醒
+    bgAlert: false,   // 背景提醒：Chrome 被蓋住時也每 1 分鐘檢查有設提醒的股票（chrome.alarms，只在開盤時段）
   };
 
   // 讀進來的設定和預設值合併；indices 要再合併一層，新加的指數才會出現

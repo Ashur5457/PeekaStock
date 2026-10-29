@@ -1,5 +1,5 @@
-// 設定面板（工具列 ⚙）：自選股新增／刪除／排序、自創分頁（新增、改名、排序、刪除、勾選內容）、指數開關、
-// 顯示（介面語言、漲跌顏色）。和懸浮框放在同一個 Shadow DOM，所以 CSS 一律限定元素類型（input.code、button.op…），
+// 設定面板（工具列 ⚙）：自選股新增／刪除／排序／到價提醒（🔔）、自創分頁（新增、改名、排序、刪除、勾選內容）、指數開關、
+// 提醒（大漲大跌、背景提醒）、顯示（介面語言、漲跌顏色）。和懸浮框放在同一個 Shadow DOM，所以 CSS 一律限定元素類型（input.code、button.op…），
 // 避免和框的樣式撞名（CLAUDE.md 第 4 節坑 2）。
 //   新增自選：先在這裡判斷代號格式、重複、上限，再請背景程式查（lookup：存不存在、名稱、上市或上櫃）
 //   清單和分頁的操作都用 prefs.js 的純函式，結果存回 prefs；所有分頁的框和面板監聽 prefs 變更跟著更新
@@ -11,7 +11,7 @@ globalThis.PSPanel ??= (() => {
 
   const CSS = `
     div.settings { position: fixed; z-index: 2147483647; width: ${WIDTH}px; max-height: 80vh; overflow: auto; box-sizing: border-box;
-                   padding: 10px 12px; border-radius: 12px; background: #202020; color: #eee; border: 1px solid #555;
+                   padding: 10px 12px; border-radius: 12px; background: #1E1C24; color: #eee; border: 1px solid #3A3646;
                    box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font: 12px/1.5 "Microsoft JhengHei", system-ui, sans-serif;
                    scrollbar-width: thin; scrollbar-color: #555 transparent; }
     div.settings[hidden] { display: none; }
@@ -19,12 +19,12 @@ globalThis.PSPanel ??= (() => {
     button.pclose, button.op { flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; cursor: pointer;
                                color: #ddd; background: #3a3a3a; font: 12px/1 system-ui, sans-serif; }
     button.pclose:hover, button.op:hover { background: #555; }
-    div.psec { margin: 12px 0 4px; color: #1D9E75; font-size: 11px; font-weight: 600; letter-spacing: .08em; }
+    div.psec { margin: 12px 0 4px; color: #FFC23D; font-size: 11px; font-weight: 600; letter-spacing: .08em; }
     form.padd { display: flex; gap: 6px; margin: 0; }
     input.code, input.tname, input.tedit, select.tpick { min-width: 0; padding: 4px 8px; border-radius: 6px; border: 1px solid #555;
                                                          background: #111; color: #eee; font: inherit; }
     input.code, input.tname, input.tedit { flex: 1; }
-    button.add { flex: none; padding: 4px 12px; border: 0; border-radius: 6px; background: #1D9E75; color: #fff; cursor: pointer; font: inherit; }
+    button.add { flex: none; padding: 4px 12px; border: 0; border-radius: 6px; background: #FFC23D; color: #2A1F00; cursor: pointer; font: inherit; font-weight: 600; }
     button.add:disabled { opacity: .5; cursor: default; }
     div.pmsg { min-height: 1.5em; margin-top: 2px; color: #bbb; font-size: 11px; }
     div.wrow { display: flex; align-items: center; gap: 4px; padding: 2px 0; }
@@ -39,7 +39,13 @@ globalThis.PSPanel ??= (() => {
     span.region { flex: none; width: 6em; color: #999; }   /* 西班牙文的地區名稱最長（Reino Unido） */
     div.ichecks { display: flex; flex-wrap: wrap; gap: 2px 10px; flex: 1; min-width: 0; }
     label.idx { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
-    input.idx { margin: 0; accent-color: #1D9E75; }`;
+    input.idx { margin: 0; accent-color: #FFC23D; }
+    button.op.on { background: #FFC23D; color: #2A1F00; }
+    input.num { width: 4.5em; padding: 2px 6px; border-radius: 6px; border: 1px solid #555; background: #111; color: #eee; font: inherit; }
+    div.aedit { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 2px 0 6px; padding: 6px 8px;
+                border-radius: 8px; background: #2A2633; color: #bbb; }
+    div.aedit input.num { width: 6em; }
+    div.phint { margin: -2px 0 4px; color: #999; font-size: 11px; }`;
 
   const HTML = `
     <div class="settings" hidden>
@@ -58,6 +64,16 @@ globalThis.PSPanel ??= (() => {
       </div>
       <div class="psec" data-i18n="p.indices"></div>
       <div class="ilist"></div>
+      <div class="psec" data-i18n="p.alerts"></div>
+      <div class="irow"><span class="region" data-i18n="p.moveAlert"></span><div class="ichecks">
+        <label class="idx"><input type="checkbox" class="idx" data-move="on"><span data-i18n="p.moveOn"></span></label>
+        <label class="idx">±<input type="number" class="num" min="0.5" max="20" step="0.5" data-move="pct">%</label>
+      </div></div>
+      <div class="phint" data-i18n="p.bellHint"></div>
+      <div class="irow"><span class="region" data-i18n="p.bgAlert"></span><div class="ichecks">
+        <label class="idx"><input type="checkbox" class="idx" data-pref="bgAlert"><span data-i18n="p.bgOn"></span></label>
+      </div></div>
+      <div class="phint" data-i18n="p.bgHint"></div>
       <div class="psec" data-i18n="p.display"></div>
       <div class="irow"><span class="region" data-i18n="p.uiLang"></span><select class="tpick" data-pref="uiLang"></select></div>
       <div class="irow"><span class="region" data-i18n="p.upColor"></span><div class="ichecks">
@@ -122,11 +138,28 @@ globalThis.PSPanel ??= (() => {
     return PSI18n.UI_OPTIONS.map(([v, name]) => new Option(name ?? `${t('opt.auto')} (${resolved})`, v, false, v === pref));
   }
 
+  const withoutKey = (obj, key) => Object.fromEntries(Object.entries(obj).filter(([k]) => k !== key));
+
+  // 到價提醒的輸入：空白＝不設；不是大於 0 的數字也當不設
+  const priceOf = (input) => {
+    const v = input.value.trim() === '' ? NaN : Number(input.value);
+    return v > 0 ? v : null;
+  };
+  // 存回 prefs.alerts：上下限都沒設就整筆拿掉
+  function setAlert(alerts, key, above, below) {
+    const a = Object.fromEntries(Object.entries({ above, below }).filter(([, v]) => v != null));
+    return Object.keys(a).length ? { ...alerts, [key]: a } : withoutKey(alerts, key);
+  }
+  // 大漲大跌的 %：0.5～20
+  const clampPct = (v) => Math.min(20, Math.max(0.5, Number(v) || 3));
+
   // 清單和分頁的動作：收最新的設定，回傳要存的欄位（prefs.js 的純函式）
   const OPS = {
     up: (p, key) => ({ watchlist: PSPrefs.moveWatch(p.watchlist, key, -1) }),
     down: (p, key) => ({ watchlist: PSPrefs.moveWatch(p.watchlist, key, 1) }),
-    del: (p, key) => ({ watchlist: PSPrefs.removeWatch(p.watchlist, key), tabs: PSPrefs.forgetKey(p.tabs, key) }),
+    del: (p, key) => ({
+      watchlist: PSPrefs.removeWatch(p.watchlist, key), tabs: PSPrefs.forgetKey(p.tabs, key), alerts: withoutKey(p.alerts, key),
+    }),
     tup: (p, id) => ({ tabs: PSPrefs.moveTab(p.tabs, id, -1) }),
     tdown: (p, id) => ({ tabs: PSPrefs.moveTab(p.tabs, id, 1) }),
     tdel: (p, id) => ({ tabs: PSPrefs.removeTab(p.tabs, id) }),
@@ -141,21 +174,39 @@ globalThis.PSPanel ??= (() => {
     const tchecks = q('div.tchecks'), ilist = q('div.ilist'), langPick = q('select[data-pref=uiLang]');
     const say = (which, text) => { q(`[data-msg=${which}]`).textContent = text; };
     let editing = null;   // 下方「放進分頁」正在編輯哪個自創分頁
+    let belling = null;   // 哪一檔自選股的到價提醒正在編輯（🔔 展開）
 
     // 在面板裡打字時，按鍵不要傳給網頁（例如 YouTube 的 L＝快轉 10 秒、K＝暫停）
     ['keydown', 'keyup', 'keypress'].forEach((type) => panel.addEventListener(type, (e) => e.stopPropagation()));
 
     // ---------- 畫面 ----------
 
-    function watchRow(w, quotes) {
+    function watchRow(w, quotes, alerts) {
       const key = PSPrefs.keyOf(w);
       const row = document.createElement('div');
       row.className = 'wrow';
+      const bell = opButton('bell', key, '🔔');
+      bell.classList.toggle('on', Boolean(alerts[key]));
       row.append(
         span('wname', w.name ?? quotes[key]?.name ?? w.code), span('wcode', w.code), span('wex', t(`ex.${w.ex ?? 'us'}`)),
-        opButton('up', key, '↑'), opButton('down', key, '↓'), opButton('del', key, '✕'),
+        bell, opButton('up', key, '↑'), opButton('down', key, '↓'), opButton('del', key, '✕'),
       );
-      return row;
+      return key === belling ? [row, alertEditor(key, alerts[key], quotes[key])] : [row];
+    }
+
+    // 🔔 展開的到價提醒：漲到 ≥ 上限、跌到 ≤ 下限（空白＝不設），✓ 存、⌫ 清掉
+    function alertEditor(key, a, quote) {
+      const box = document.createElement('div');
+      box.className = 'aedit';
+      const num = (k) => {
+        const input = document.createElement('input');
+        Object.assign(input, { type: 'number', className: 'num', min: '0', step: 'any', value: a?.[k] ?? '', placeholder: quote?.price ?? '' });
+        input.dataset.alert = k;
+        return input;
+      };
+      box.append(span('', t('p.above')), num('above'), span('', t('p.below')), num('below'),
+        opButton('asave', key, '✓'), opButton('aclear', key, '⌫'));
+      return box;
     }
 
     function tabRow(x) {
@@ -187,7 +238,7 @@ globalThis.PSPanel ??= (() => {
     function render() {
       const p = getPrefs();
       const quotes = getQuotes() ?? {};
-      wlist.replaceChildren(...p.watchlist.map((w) => watchRow(w, quotes)));
+      wlist.replaceChildren(...p.watchlist.flatMap((w) => watchRow(w, quotes, p.alerts)));
       tlist.replaceChildren(...p.tabs.map(tabRow));
       renderTabEditor(p, quotes);
       ilist.replaceChildren(...byMarket(PSMarkets.INDICES).map(([market, list]) => checkRow(
@@ -196,6 +247,9 @@ globalThis.PSPanel ??= (() => {
       langPick.replaceChildren(...langOptions(p.uiLang));
       panel.querySelectorAll('input[data-pref=upColor]').forEach((r) => { r.checked = r.value === p.upColor; });
       q('input[data-pref=showLag]').checked = p.showLag;
+      q('input[data-pref=bgAlert]').checked = p.bgAlert;
+      q('input[data-move=on]').checked = p.moveAlert.on;
+      q('input[data-move=pct]').value = p.moveAlert.pct;
     }
 
     // ---------- 新增 ----------
@@ -279,9 +333,36 @@ globalThis.PSPanel ??= (() => {
       input.select();
     }
 
-    // ↑ ↓ ✕ ✎：按下就做，不等放開（CLAUDE.md 第 4 節坑 1）
+    // ---------- 到價提醒（🔔） ----------
+
+    function toggleBell(key) {
+      belling = belling === key ? null : key;
+      render();
+      wlist.querySelector('input[data-alert=above]')?.focus();
+    }
+
+    async function saveAlert(key, keep) {
+      const value = (k) => (keep ? priceOf(wlist.querySelector(`input[data-alert=${k}]`)) : null);
+      const [above, below] = [value('above'), value('below')];
+      belling = null;
+      const latest = await PSPrefs.load();
+      await PSPrefs.update({ alerts: setAlert(latest.alerts, key, above, below) });
+    }
+    wlist.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.dataset.alert) saveAlert(belling, true);
+    });
+
+    // 只改面板畫面、或要讀輸入框的動作；其他的查 OPS 存回 prefs
+    const LOCAL = {
+      ren: startRename,
+      bell: toggleBell,
+      asave: (key) => saveAlert(key, true),
+      aclear: (key) => saveAlert(key, false),
+    };
+
+    // ↑ ↓ ✕ ✎ 🔔：按下就做，不等放開（CLAUDE.md 第 4 節坑 1）
     async function op(name, key) {
-      if (name === 'ren') return startRename(key);
+      if (LOCAL[name]) return LOCAL[name](key);
       const latest = await PSPrefs.load();
       await PSPrefs.update(OPS[name](latest, key));
     }
@@ -292,9 +373,10 @@ globalThis.PSPanel ??= (() => {
       op(b.dataset.op, b.dataset.key);
     });
 
-    // 選單和勾選框：顯示設定（data-pref）、指數開關（data-sym）、放進分頁（data-key）
+    // 選單和勾選框：顯示設定（data-pref）、大漲大跌（data-move）、指數開關（data-sym）、放進分頁（data-key）
     const CHANGES = {
       pref: (box) => ({ [box.dataset.pref]: box.type === 'checkbox' ? box.checked : box.value }),
+      move: (box, p) => ({ moveAlert: { ...p.moveAlert, [box.dataset.move]: box.type === 'checkbox' ? box.checked : clampPct(box.value) } }),
       sym: (box, p) => ({ indices: { ...p.indices, [box.dataset.sym]: box.checked } }),
       key: (box, p) => ({ tabs: PSPrefs.setInTab(p.tabs, editing, box.dataset.key, box.checked) }),
     };

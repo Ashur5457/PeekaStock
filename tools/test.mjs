@@ -32,6 +32,8 @@ const changeListeners = [];
 const messageListeners = [];
 const commandListeners = [];
 const actionListeners = [];
+const alarmListeners = [];
+const alarms = {};   // 名稱 → 設定（假的 chrome.alarms 只記下來，測試自己叫 alarmListeners）
 globalThis.chrome = {
   storage: {
     local: fakeArea('local', changeListeners),
@@ -41,6 +43,11 @@ globalThis.chrome = {
   runtime: { onMessage: { addListener: (cb) => messageListeners.push(cb) } },
   commands: { onCommand: { addListener: (cb) => commandListeners.push(cb) } },
   action: { onClicked: { addListener: (cb) => actionListeners.push(cb) } },
+  alarms: {
+    create: async (name, info) => { alarms[name] = info; },
+    clear: async (name) => delete alarms[name],
+    onAlarm: { addListener: (cb) => alarmListeners.push(cb) },
+  },
 };
 globalThis.importScripts = (...files) => files.forEach(load);
 
@@ -80,6 +87,7 @@ load('markets.js');
 load('prefs.js');
 load('sources.js');
 load('schedule.js');
+load('alerts.js');
 const { isOpen, INDICES } = PSMarkets;
 const { parseMis, parseSpark, SOURCES } = PSSources;
 
@@ -116,7 +124,8 @@ await test('組出來的 key 也都存在：指數、地區、分頁、段標題
     ...INDICES.map((i) => i.nameKey), ...Object.keys(PSMarkets.MARKETS).map((m) => `mkt.${m}`),
     ...PSPrefs.BUILTIN_TABS.map((x) => x.nameKey), ...PSPrefs.sections(PSPrefs.items(PSPrefs.DEFAULT)).map((s) => s.titleKey),
     ...['http', 'notJson', 'mis', 'timeout', 'other'].map((c) => `err.${c}`), 'err.line',
-    ...['tse', 'otc', 'us'].map((x) => `ex.${x}`), ...['up', 'down', 'del', 'ren', 'tup', 'tdown', 'tdel'].map((x) => `op.${x}`),
+    ...['tse', 'otc', 'us'].map((x) => `ex.${x}`), ...['up', 'down', 'del', 'ren', 'tup', 'tdown', 'tdel', 'bell', 'asave', 'aclear'].map((x) => `op.${x}`),
+    ...PSAlerts.RULES.map((r) => `alert.${r.kind}`),
     ...['tabEmpty', 'tabLong', 'tabDup', 'tabFull', 'format', 'notFound'].map((x) => `msg.${x}`),
     ...['bid', 'ask'].flatMap((x) => [`tag.${x}`, `tag.${x}Hint`]),
   ];
@@ -125,7 +134,7 @@ await test('組出來的 key 也都存在：指數、地區、分頁、段標題
 await test('程式碼裡沒有漏掉的中日韓文字（註解以外都要搬進 i18n.js）', () => {
   const CJK = /[　-ヿ㐀-鿿가-힯＀-￯]/;
   const strip = (code) => code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
-  ['overlay.js', 'panel.js', 'markets.js', 'prefs.js', 'sources.js', 'schedule.js', 'box.js', 'sw.js'].forEach((f) => {
+  ['overlay.js', 'panel.js', 'markets.js', 'prefs.js', 'sources.js', 'schedule.js', 'box.js', 'sw.js', 'alerts.js'].forEach((f) => {
     const bad = strip(src(f)).split('\n').filter((line) => CJK.test(line));
     assert.deepEqual(bad, [], f);
   });
@@ -156,7 +165,7 @@ await test('manifest 用到的圖示檔都存在（由 tools/make_icons.ps1 從 
 });
 await test('設定新欄位有預設值：介面語言自動、紅漲綠跌；舊設定讀得進來', () => {
   const p = PSPrefs.merge({ watchlist: [] });
-  assert.deepEqual([p.uiLang, p.upColor, p.showLag], ['auto', 'red', false]);
+  assert.deepEqual([p.uiLang, p.upColor, p.showLag, p.mini], ['auto', 'red', false, false]);
 });
 
 console.log('\n市場表');
@@ -430,6 +439,47 @@ await test('連續失敗 2 次 → 間隔變 4 倍；最多 5 分鐘', () => {
   assert.equal(PSSchedule.waitOf(plan, { fails: 20 }), PSSchedule.MAX_WAIT);
 });
 
+console.log('\n提醒（alerts.js）');
+const alertPrefs = (extra = {}) => ({ alerts: {}, moveAlert: { on: true, pct: 3 }, ...extra });
+const stock = { key: 'tw:2330', market: 'tw' };
+const kindsOf = (hits) => hits.map((h) => h.kind).sort();
+await test('到價：剛好等於上限／下限就響；沒設就不響', () => {
+  const p = alertPrefs({ alerts: { 'tw:2330': { above: 2400, below: 2300 } }, moveAlert: { on: false, pct: 3 } });
+  const at = (price, prefs = p) => kindsOf(PSAlerts.check([stock], { 'tw:2330': { price, pct: 0 } }, prefs, {}, AT.twOpen));
+  assert.deepEqual(at(2400), ['above']);
+  assert.deepEqual(at(2300), ['below']);
+  assert.deepEqual(at(2350), []);
+  assert.deepEqual(at(9999, alertPrefs({ moveAlert: { on: false, pct: 3 } })), []);
+});
+await test('大漲大跌：±3% 剛好就響，2.99% 不響；關掉就不響', () => {
+  const at = (pct, p = alertPrefs()) => kindsOf(PSAlerts.check([stock], { 'tw:2330': { price: 1, pct } }, p, {}, AT.twOpen));
+  assert.deepEqual(at(3), ['up']);
+  assert.deepEqual(at(-3), ['down']);
+  assert.deepEqual(at(2.99), []);
+  assert.deepEqual(at(5, alertPrefs({ moveAlert: { on: false, pct: 3 } })), []);
+});
+await test('休市不響；同一天響過不再響，隔天會再響', () => {
+  const quotes = { 'tw:2330': { price: 1, pct: 5 } };
+  assert.deepEqual(PSAlerts.check([stock], quotes, alertPrefs(), {}, AT.twClosed), []);
+  const [hit] = PSAlerts.check([stock], quotes, alertPrefs(), {}, AT.twOpen);
+  assert.equal(hit.id, 'tw:2330|up|2026-10-28');
+  assert.deepEqual(PSAlerts.check([stock], quotes, alertPrefs(), { [hit.id]: true }, AT.twOpen), []);
+  const nextDay = AT.twOpen + 86400000;
+  assert.equal(PSAlerts.check([stock], quotes, alertPrefs(), { [hit.id]: true }, nextDay).length, 1);
+  assert.deepEqual(PSAlerts.prune({ [hit.id]: true }, AT.twOpen), { [hit.id]: true });
+  assert.deepEqual(PSAlerts.prune({ [hit.id]: true }, nextDay + 86400000), {});
+});
+await test('背景提醒只抓要看的：大漲大跌開著＝全部；關著＝只有設了到價的', () => {
+  const list = PSPrefs.items(PSPrefs.DEFAULT);
+  assert.equal(PSAlerts.watched(list, alertPrefs()).length, list.length);
+  const only = PSAlerts.watched(list, alertPrefs({ alerts: { 'us:AAPL': { above: 1 } }, moveAlert: { on: false, pct: 3 } }));
+  assert.deepEqual(only.map((i) => i.key), ['us:AAPL']);
+});
+await test('新設定的預設值：沒有到價提醒、大漲大跌 ±3% 開著、背景提醒關著', () => {
+  const p = PSPrefs.merge({ stealth: true });
+  assert.deepEqual([p.alerts, p.moveAlert, p.bgAlert], [{}, { on: true, pct: 3 }, false]);
+});
+
 console.log('\n懸浮框位置大小（box.js）');
 load('box.js');
 const VIEW = { w: 1280, h: 720 };
@@ -570,6 +620,42 @@ await test('MIS 延遲統計：台股盤中才算，分到正確的格子', () =
   assert.deepEqual(m.buckets, [1, 1, 1, 1, 1]);
   assert.deepEqual([m.n, m.last.median, m.last.max], [5, 50, 300]);
   assert.equal(closed, m);
+});
+
+await test('提醒：抓到報價後放進佇列，只放一次；框顯示完送 dismissAlert 拿掉', async () => {
+  const realOpen = PSMarkets.isOpen;
+  PSMarkets.isOpen = () => true;
+  await chrome.storage.session.set({ hidden: false, alertQueue: [], alertFired: {} });
+  await PSPrefs.update({ alerts: { 'us:AAPL': { above: 1 } }, moveAlert: { on: false, pct: 3 } });
+  for (const _ of [1, 2]) {
+    Object.keys(state).forEach((k) => { state[k].last = 0; });
+    await tickOnce();
+  }
+  PSMarkets.isOpen = realOpen;
+  assert.deepEqual(session.alertQueue.map((a) => [a.key, a.kind]), [['us:AAPL', 'above']]);
+  messageListeners.forEach((cb) => cb({ to: 'sw', cmd: 'dismissAlert', id: session.alertQueue[0].id }));
+  await sleep(20);
+  assert.deepEqual(session.alertQueue, []);
+});
+await test('背景提醒：打開才設鬧鐘；鬧鐘響時框藏著也抓，但只抓有設提醒的', async () => {
+  assert.equal(alarms.bgAlert, undefined);
+  await PSPrefs.update({ bgAlert: true });
+  await sleep(20);
+  assert.deepEqual(alarms.bgAlert, { periodInMinutes: 1 });
+  const realOpen = PSMarkets.isOpen;
+  PSMarkets.isOpen = () => true;
+  await chrome.storage.session.set({ hidden: true });
+  Object.keys(state).forEach((k) => { state[k].last = 0; });
+  delete session.quotes;
+  calls.length = 0;
+  alarmListeners.forEach((cb) => cb({ name: 'bgAlert' }));
+  for (let i = 0; i < 50 && running; i += 1) await sleep(10);
+  PSMarkets.isOpen = realOpen;
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].includes('/v7/finance/spark') && calls[0].includes('AAPL') && !calls[0].includes('NVDA'), calls[0]);
+  await PSPrefs.update({ bgAlert: false });
+  await sleep(20);
+  assert.equal(alarms.bgAlert, undefined);
 });
 
 console.log(`\n${passed} 個通過，${failed.length} 個失敗`);

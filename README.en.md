@@ -1,10 +1,10 @@
-# 📈 PeekStock
+# 📈 PeekaStock
 
 **A hideable stock ticker for Taiwan and US markets: a small floating box in the corner of any web page, one shortcut away from vanishing.**
 
-**Draggable, resizable floating box**, **boss key**, **stealth look**, **watchlist with custom tabs**, and a UI in six languages. Quotes only — no trading.
+**Draggable, resizable floating box**, **boss key**, **stealth look**, **price & big-move alerts**, **watchlist with custom tabs**, and a UI in six languages. Quotes only — no trading.
 
-[![Version](https://img.shields.io/badge/version-v0.7.0-1D9E75)](manifest.json)
+[![Version](https://img.shields.io/badge/version-v0.7.0-FFC23D)](manifest.json)
 [![Chrome](https://img.shields.io/badge/Chrome-desktop-4285F4)](#-install)
 [![Free](https://img.shields.io/badge/free-no%20API%20key-2f8a4b)](#-privacy)
 [![License](https://img.shields.io/badge/license-MIT-5C4033)](LICENSE)
@@ -26,8 +26,10 @@ I wanted to glance at the market during work, but a trading app is too conspicuo
 ## ✨ Features
 
 - **On every page**: the box appears in the corner of every tab, and all tabs share the same position and size. Drag it, resize it from any corner; it stays visible in full-screen video.
-- **Boss key**: press **Alt+Shift+H** (or click the PeekStock toolbar icon) to hide the box in all tabs at once. While hidden, nothing is fetched.
+- **Boss key**: press **Alt+Shift+H** (or click the PeekaStock toolbar icon) to hide the box in all tabs at once. While hidden, nothing is fetched.
 - **Stealth look ◐**: transparent background, gray text, ▲▼ instead of colors — it looks like part of the page.
+- **Mini peek ▁**: the box shrinks to cat ears and one line, showing the next quote every 4 s.
+- **Alerts**: when a quote moves more than ±3% (adjustable) or hits your target price, a paw bubble pops up in the box (e.g. "NVDA up ▲3.2%!"); in stealth look only the row is highlighted. No system notifications.
 - **Watchlist**: type `2330` or `AAPL` to add; listed (TWSE) / OTC (TPEx) / US is detected automatically. US stocks show tickers, Taiwan stocks show names.
 - **Tabs**: `All | Taiwan | US | World`, plus your own tabs (e.g. "Tech", "Dividend"). A stock can be in several tabs.
 - **World indices**: 16 indices from Taiwan, US, China, Hong Kong, Japan, Korea, Singapore, UK, France and Germany, each can be turned on or off.
@@ -44,7 +46,7 @@ I wanted to glance at the market during work, but a trading app is too conspicuo
 | KOSPI | Yahoo Finance | about 20 minutes |
 
 - Every row shows its **data time**; intraday rows older than 2 minutes turn gray, so you can see what is stale.
-- Taiwan stocks often have no trade price during the session; PeekStock then shows the best bid (or ask) and marks it "Bid"/"Ask".
+- Taiwan stocks often have no trade price during the session; PeekaStock then shows the best bid (or ask) and marks it "Bid"/"Ask".
 - Closed markets are not fetched. If no tab is in the foreground, or the box is hidden, no requests are sent at all.
 
 ```mermaid
@@ -59,33 +61,51 @@ flowchart LR
 
 ## 🚀 Install
 
-PeekStock is not on the Chrome Web Store yet. Install it with "Load unpacked":
+PeekaStock is not on the Chrome Web Store yet. Install it with "Load unpacked":
 
-1. Click **[⬇ Download ZIP](https://github.com/Ashur5457/PeekStock/archive/refs/heads/main.zip)** and unzip it (you get a `PeekStock-main` folder). With git: `git clone https://github.com/Ashur5457/PeekStock.git`
-2. Open `chrome://extensions` and turn on **Developer mode** (top right)
-3. Click **Load unpacked** and choose the `PeekStock-main` folder (the one that directly contains `manifest.json`)
-4. Click the puzzle button 🧩 in the toolbar and pin PeekStock (clicking the icon hides/shows the box)
-5. **Reload** the pages you already have open; the box appears in the bottom-right corner
+### 1. Download
+
+Click **[⬇ Download ZIP](https://github.com/Ashur5457/PeekaStock/archive/refs/heads/main.zip)** and unzip it (you get a `PeekaStock-main` folder). With git: `git clone https://github.com/Ashur5457/PeekaStock.git`
+
+### 2. Turn on developer mode
+
+Open `chrome://extensions` and turn on **Developer mode** (top right)
+
+<img src="docs/readme/step2.png" width="700" alt="2. Turn on developer mode">
+
+### 3. Load
+
+Click **Load unpacked** and choose the `PeekaStock-main` folder (the one that directly contains `manifest.json`)
+
+### 4. Pin the icon
+
+Click the puzzle button 🧩 in the toolbar and pin PeekaStock (clicking the icon hides/shows the box)
+
+### 5. Reload your pages
+
+**Reload** the pages you already have open; the box appears in the bottom-right corner
 
 ## 🎬 Usage
 
-1. Hover over the box to show the toolbar: **⚙** settings, **◐** stealth look, **👁** hide, **↺** reset position. Drag the "PeekStock" label to move the box.
+1. Hover over the box to show the toolbar: **⚙** settings, **▁** mini peek, **◐** stealth look, **👁** hide, **↺** reset position. Drag the toolbar (cat head) to move the box.
 2. **⚙ Settings**:
    - **Watchlist**: enter a code and click Add; ↑↓ to reorder, ✕ to remove
    - **Custom tabs**: add, ✎ rename, ↑↓, ✕; tick what goes into a tab under "Add to tab"
    - **Indices**: turn each on or off
+   - **Alerts**: big moves ±% (default 3%); for a price alert tap 🔔 on a watchlist row and set an upper/lower price; with "Background" on, alerted items are also checked once a minute while the box is out of sight (market hours only), and the alert pops up the next time you see the box
    - **Display**: UI language, up/down colors
-3. **Boss key Alt+Shift+H**: hides the box in all tabs; press again to bring it back. Clicking the PeekStock toolbar icon does the same.
+3. **Boss key Alt+Shift+H**: hides the box in all tabs; press again to bring it back. Clicking the PeekaStock toolbar icon does the same.
 
 > [!TIP]
 > If Alt+Shift+H does nothing, another extension may be using it. Set a different shortcut at `chrome://extensions/shortcuts`.
 
 ## 🔐 Permissions
 
-Chrome warns that PeekStock can "read and change all your data on all websites". That is because the box has to be drawn on **every page**, so its script must be injected into every page.
+Chrome warns that PeekaStock can "read and change all your data on all websites". That is because the box has to be drawn on **every page**, so its script must be injected into every page.
 
 - The box only draws quotes. It **does not read or collect page content**.
 - It connects to exactly two sites: `mis.twse.com.tw` (Taiwan Stock Exchange) and `query1.finance.yahoo.com` (Yahoo Finance).
+- It also uses the `alarms` permission, only when you turn on background alerts: it wakes the background script once a minute.
 
 ## ⚠️ Known limitations
 
@@ -105,12 +125,12 @@ Chrome warns that PeekStock can "read and change all your data on all websites".
 
 ## 📜 Disclaimer
 
-PeekStock only displays quotes and **is not investment advice**. Quotes may be delayed, wrong or unavailable; rely on your broker or the exchange. This project is not affiliated with the Taiwan Stock Exchange or Yahoo.
+PeekaStock only displays quotes and **is not investment advice**. Quotes may be delayed, wrong or unavailable; rely on your broker or the exchange. This project is not affiliated with the Taiwan Stock Exchange or Yahoo.
 
 ## 📂 Files
 
 ```
-PeekStock/
+PeekaStock/
 ├── manifest.json         # Extension manifest (MV3)
 ├── sw.js                 # Background: scheduling, fetching, boss key, code lookup
 ├── sources.js            # Data sources: TWSE MIS, Yahoo spark (parsing and error codes)
@@ -119,6 +139,7 @@ PeekStock/
 ├── prefs.js              # Settings; watchlist and tab operations
 ├── overlay.js            # Floating box (Shadow DOM): drag, resize, tab bar, quote table
 ├── panel.js              # ⚙ settings panel
+├── alerts.js             # Alert rules: price targets, big moves, once a day
 ├── box.js                # Box position and size math
 ├── i18n.js               # UI strings (one line per string, six languages side by side)
 ├── _locales/             # Extension description and shortcut text in six languages

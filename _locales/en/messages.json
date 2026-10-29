@@ -1,11 +1,11 @@
 {
   "extDescription": {
-    "message": "PeekStock — a hideable stock ticker for Taiwan and US markets"
+    "message": "PeekaStock — a hideable stock ticker for Taiwan and US markets"
   },
   "actionTitle": {
-    "message": "PeekStock: hide / show (Alt+Shift+H)"
+    "message": "PeekaStock: hide / show (Alt+Shift+H)"
   },
   "cmdToggleHide": {
-    "message": "Hide / show PeekStock (all tabs)"
+    "message": "Hide / show PeekaStock (all tabs)"
   }
 }

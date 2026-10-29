@@ -1,4 +1,4 @@
-# PeekStock：上班偷看盤，台股／美股即時報價＋各國指數（Chrome 擴充功能）
+# PeekaStock（偷喵看盤）：上班偷看盤，台股／美股即時報價＋各國指數（Chrome 擴充功能）
 
 > 開發文件：需求、已決定事項、架構、踩過的坑、進度。每次開始工作前先讀完本檔。
 > 個人背景、回答語言、工作與審查方式寫在 `CLAUDE.local.md`（不上傳 GitHub）。
@@ -7,14 +7,15 @@
 
 **一句話**：在任何網頁上浮一個可拖曳、可縮放、能一鍵藏起來的小框，顯示自選的台股、美股即時報價，以及各國主要指數。只讀報價，不下單。
 
-- 名稱：**PeekStock**；資料夾與 repo 名 `PeekStock`；說明句：「PeekStock — a hideable stock ticker for Taiwan and US markets」／「PeekStock — 上班偷看盤：台股／美股即時報價懸浮窗」
+- 名稱：**PeekaStock**（2026-10-30 由 PeekStock 改名；唸起來是 peekaboo 躲貓貓 → Peek-a-Stock），中文名「**偷喵看盤**」；repo 名 `PeekaStock`；說明句：「PeekaStock — a hideable stock ticker for Taiwan and US markets」／「PeekaStock — 上班偷看盤：台股／美股即時報價懸浮窗」
+- 本機資料夾目前還叫 `PeekStock`（Claude Code 在裡面執行，改名要使用者關掉後自己改成 `PeekaStock`）；程式內部的名稱（`PS*` 全域物件、`peek-stock` 元素、storage key）不改，使用者看不到也不影響
 - 參考對象：作者自己的 FreeLiveSub（https://github.com/Ashur5457/freelivesub），本機在 `../tab-subtitle-spike`。懸浮框外殼、設定寫法、i18n 架構、開發規則都沿用它。開發前先讀它的 `CLAUDE.md` 第 4 節「已踩過的坑」
 - **`../tab-subtitle-spike` 只能讀取，絕對不要修改、刪除或在裡面執行 git 指令**；要用的檔案一律複製到本專案再改
 
 ### 資料夾配置
 
 ```
-C:\Users\ShuChi\software\chrome-ext-dev\
+chrome-ext-dev\
 ├── tab-subtitle-spike\   ← FreeLiveSub（只讀參考，獨立 git repo）
 └── PeekStock\            ← 本專案（獨立 git repo）
 ```
@@ -119,17 +120,18 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 
 | 檔案 | 作用 |
 |---|---|
-| `manifest.json` | MV3 v0.7.0；`icons`／`action.default_icon`；說明、圖示提示、快捷鍵說明用 `__MSG_…__`（`default_locale: en`）；權限只有 `storage`；`commands`（toggle-hide）、`action`（點圖示＝隱藏／顯示）；`host_permissions` 只有 MIS 和 `query1.finance.yahoo.com`；content script 比對 `<all_urls>`，載入順序 i18n → markets → prefs → box → panel → overlay |
+| `manifest.json` | MV3 v0.7.0；`icons`／`action.default_icon`；說明、圖示提示、快捷鍵說明用 `__MSG_…__`（`default_locale: en`）；權限 `storage`、`alarms`（背景提醒）；`commands`（toggle-hide）、`action`（點圖示＝隱藏／顯示）；`host_permissions` 只有 MIS 和 `query1.finance.yahoo.com`；content script 比對 `<all_urls>`，載入順序 i18n → markets → prefs → box → panel → overlay |
 | `_locales/*/messages.json` | manifest 的六語文字（en、zh_TW、zh_CN、ja、ko、es）：`extDescription`、`actionTitle`、`cmdToggleHide` |
 | `i18n.js` | `PSI18n`（架構沿用 FreeLiveSub）：每個 key 一行、6 欄（zh-Hant、en、zh-Hans、ja、ko、es）；`t(key, vars)`、`apply(root)`（`data-i18n`／`data-i18n-title`／`data-i18n-placeholder`）、`resolve('auto')` 依瀏覽器語言。指數名稱 `idx.＋代號`、地區 `mkt.＋市場`、錯誤 `err.＋代碼` |
 | `markets.js` | `PSMarkets`：市場表（時區、交易時段）、指數表 `INDICES`（市場、抓取群組、代號、`nameKey`）、`isOpen()` |
-| `prefs.js` | `PSPrefs`：預設自選（2330、6488、AAPL、NVDA）、指數開關、隱身、目前分頁 `tab`、自創分頁 `tabs`、介面語言 `uiLang`（auto）、漲跌顏色 `upColor`（red）；load／update／watch／merge；純函式：`items()`（設定 → 項目）、`sections()`（台股／美股／國際指數分段）、`labelOf()`（美股顯示代號、台股顯示名稱）、`classify()`（代號屬於哪個市場）、`addWatch`／`removeWatch`／`moveWatch`、分頁 `visibleTabs`／`currentTab`／`tabError`／`addTab`／`renameTab`／`removeTab`／`moveTab`／`setInTab`／`forgetKey`；自選上限 100、自創分頁上限 10、名稱 8 字 |
+| `prefs.js` | `PSPrefs`：預設自選（2330、6488、AAPL、NVDA）、指數開關、隱身、目前分頁 `tab`、自創分頁 `tabs`、介面語言 `uiLang`（auto）、漲跌顏色 `upColor`（red）、迷你模式 `mini`、到價提醒 `alerts`（`{ key: { above?, below? } }`）、大漲大跌 `moveAlert`（`{ on: true, pct: 3 }`）、背景提醒 `bgAlert`（false）；load／update／watch／merge；純函式：`items()`（設定 → 項目）、`sections()`（台股／美股／國際指數分段）、`labelOf()`（美股顯示代號、台股顯示名稱）、`classify()`（代號屬於哪個市場）、`addWatch`／`removeWatch`／`moveWatch`、分頁 `visibleTabs`／`currentTab`／`tabError`／`addTab`／`renameTab`／`removeTab`／`moveTab`／`setInTab`／`forgetKey`；自選上限 100、自創分頁上限 10、名稱 8 字 |
 | `sources.js` | `PSSources`：`mis()`、`spark()` 與各自的解析函式；`LOOKUP`（新增自選時查代號：台股一次問 tse_／otc_）；錯誤一律帶代碼 `{ code: http／notJson／mis／timeout／other, src, detail }`，框依介面語言翻成文字 |
 | `schedule.js` | `PSSchedule.due()`：純函式，決定這次 tick 要抓哪些群組、哪些項目；退避 |
-| `sw.js` | 背景程式：收 tick → 排程 → 抓取 → 寫 `storage.session` 的 `quotes`／`status`／`misLag`；老闆鍵 `toggleHidden()`（`hidden`）；`lookup` 指令（要回覆的指令放 `REPLIES`）；開放 session 給 content script 讀 |
+| `sw.js` | 背景程式：收 tick → 排程 → 抓取 → 寫 `storage.session` 的 `quotes`／`status`／`misLag`；老闆鍵 `toggleHidden()`（`hidden`）；抓完檢查提醒 → `alertQueue`（最多 20 個）／`alertFired`（今天響過的），框顯示完送 `dismissAlert`；背景提醒打開時 `chrome.alarms` 每 1 分鐘只抓 `PSAlerts.watched()`（框藏著也抓）；`lookup` 指令（要回覆的指令放 `REPLIES`）；開放 session 給 content script 讀 |
+| `alerts.js` | `PSAlerts`：提醒規則表 `RULES`（above／below／up／down）、`check()`（只看盤中，提醒 id＝`key|kind|交易所當地日期`，一天一次）、`watched()`、`prune()`；只有 sw.js 載入 |
 | `box.js` | `PSBox`：懸浮框位置大小的純函式（搬自 FreeLiveSub，可在 Node 測） |
-| `overlay.js` | 懸浮框（Shadow DOM）：拖曳、四角縮放、全螢幕、位置存 `overlayBox` 並在所有分頁同步；工具列 ⚙ 設定、◐ 隱身、👁 隱藏、↺ 重設；框上方分頁列（全部／台股／美股／國際＋自創分頁）；分頁裡有多個市場時分段加標題；分頁看得見時每 5 秒送 tick |
-| `panel.js` | `PSPanel`：⚙ 設定面板（自選股新增／刪除／排序、自創分頁新增／改名／排序／刪除／勾選內容、指數開關、顯示：介面語言與漲跌顏色），放在框的下、上、左、右第一個放得下的位置 |
+| `overlay.js` | 懸浮框（Shadow DOM）：拖曳、四角縮放、全螢幕、位置存 `overlayBox` 並在所有分頁同步；工具列 ⚙ 設定、◐ 隱身、👁 隱藏、↺ 重設；框上方分頁列（全部／台股／美股／國際＋自創分頁）；分頁裡有多個市場時分段加標題；分頁看得見時每 5 秒送 tick；E1 貓耳朵、貓掌提醒泡泡（一次一個，8 秒或點掉；隱身時只標亮那一列 `tr.alerted`） |
+| `panel.js` | `PSPanel`：⚙ 設定面板（自選股新增／刪除／排序／🔔 到價提醒（就地展開上下限）、自創分頁新增／改名／排序／刪除／勾選內容、指數開關、提醒：大漲大跌 ±%（0.5～20）與背景提醒、顯示：介面語言與漲跌顏色），放在框的下、上、左、右第一個放得下的位置 |
 | `tools/probe.mjs` | v0.1 資料來源實測；結果存 `tools/probe-results/`、原始回應存 `tools/samples/`（兩者都不上傳） |
 | `tools/test.mjs` | `node tools/test.mjs`：測試 |
 | `tools/fixtures/` | 測試用的真實回應（從 `tools/samples/` 縮減，只留測試用到的欄位，約 8 KB；會上傳） |
@@ -189,7 +191,7 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 | 漲停／跌停標示 | MIS `u`／`w` | ⭐ 台股特有 |
 | 迷你走勢線 | Yahoo spark 本來就回傳當日 5 分鐘資料 | 不是 K 線圖，只是一條細線 |
 | 期貨、匯率（`ES=F`、`NQ=F`、`TWD=X`） | Yahoo，指數表加一行 | 期貨延遲 10 分鐘（7.1），要標示 |
-| 到價提醒 | `chrome.notifications` | 之後再說：要背景一直抓，和「沒有前景分頁就不發請求」衝突 |
+| 到價提醒 | 已有的報價 | ✅ v0.7 做了（框裡的貓掌泡泡＋可選的背景提醒，不用 `chrome.notifications`），見第 6 節 |
 | 五檔買賣 | MIS `a`／`b`／`f`／`g` | 之後再說：框太小，可做成點開的細節 |
 | 自選分組 | 只是設定 | v0.5 自選清單穩定後 |
 
@@ -239,10 +241,24 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
   - [x] 圖示（2026-10-30 定案）：**黑貓「偷喵」躲在折線圖牆後面探頭**——紅色折線＋實心大箭頭往右上、藍色長條頂端貼著折線，兩者都在貓前面；奶油色圓角背景；有黑色卡通外框。`icons/icon.svg` 是原稿，`tools/make_icons.ps1` 用無頭 Chrome 畫成 512px 再縮成 16／32／48／128 PNG（角落透明）；manifest 加 `icons`、`action.default_icon`；測試檢查圖示檔存在
     - 討論過程（之後改圖示可參考）：PowerShell 畫的幾何圖形太死板 → 改用 SVG＋Chrome 輸出；整片青綠色沒活力；「只有頭＋爪子」不自然，要畫整隻坐著的貓、被牆擋住一半（使用者的照片：黑貓躲在牆角、貓從門縫偷看）；單根紅 K 棒像爆竹；K 棒要照規則排（時間左到右、最高的在最右邊）；看板／螢幕太呆板；參考網路股票圖示的「長條＋折線箭頭」；國際上紅綠漲跌習慣相反，但箭頭方向已表達上漲，所以紅色可以
     - 名字聯想：「偷喵」＝偷瞄的諧音；Peeky 接近 peekaboo（躲貓貓）
-  - [ ] README 截圖（使用者用真的 Chrome 截：框、設定面板、隱身外觀），放 `docs/readme/`
+  - [ ] README 截圖（使用者用真的 Chrome 截：框、設定面板、隱身外觀、選資料夾、釘選圖示），放 `docs/readme/`
+  - [x] 2026-10-30 README 安裝步驟改成 FreeLiveSub 的格式（### 小標題＋截圖）；`docs/readme/step2.png`（開發人員模式＋載入未封裝項目，通用畫面）從 FreeLiveSub 複製；FreeLiveSub 的 step3／step4 拍到它自己的資料夾和圖示，不能沿用
   - [x] 2026-10-30 `git init -b main`＋第一次提交 `ca4fe75`（身分 Ashur5457＋noreply，只設本 repo；`.gitattributes` 照 FreeLiveSub：文字檔 LF、PNG 二進位）
-  - [ ] 推上 GitHub（公開 repo `Ashur5457/PeekStock`）：**要先問使用者**
+  - [x] 2026-10-30 使用者同意後推上 GitHub（公開 repo `Ashur5457/PeekaStock`）。CLAUDE.md 的資料夾圖拿掉含 Windows 使用者名稱的完整路徑
   - [ ] 擴充功能的漲跌顏色預設改成依介面語言（中日韓紅漲、英西綠漲）：已提議，待使用者決定
+  - [x] **懸浮框加「偷喵」元素**（2026-10-30 使用者提議，A、B 都做；2026-10-30 使用者實測 OK）
+    - 參考：Catppuccin（貓主題開源配色）、oneko.js（跟著滑鼠的像素貓，MIT）、Cat Ears Extension（幫 logo 加貓耳）——只借做法，不用素材
+    - A1 框頂兩隻貓耳朵（CSS `clip-path` 三角形＋粉紅內耳），滑鼠移上時右耳抖一下；A2 配色和圖示一致：炭黑底 `rgba(30,28,36,.94)`＋金色 `#FFC23D` 強調色（取代原本的青綠 `#1D9E75`，面板也改）；A3 工具列「PeekStock」前的小貓頭 SVG；A4 資料變灰時時間旁 💤；A5 分頁沒東西時「🐾 偷喵還沒有東西可以看…」（`ov.empty`），錯誤列前 🙀
+    - B1 四角縮放把手改金色貓掌印（CSS 背景 SVG）；B2 按 👁 時耳朵縮下去、框淡出 0.16 秒再藏（老闆鍵和點圖示維持瞬間）；B3 迷你偷看模式 `prefs.mini`（工具列 ▁）：框只剩耳朵＋一行報價，每 4 秒換下一檔，高度自動
+    - **隱身外觀時所有貓元素都藏起來**（耳朵、貓頭、💤、🐾、掌印），錯誤列改回 ⚠；`err.line` 的 ⚠ 從翻譯文字拿掉，改由 CSS 依外觀決定
+    - 踩到的坑：迷你模式時框加了 class `mini`，而那一行報價的元素原本也叫 `div.mini` → CSS 把整個框藏起來（第 4 節坑 2 又一次）→ 改名 `div.miniline`
+    - 2026-10-30 使用者回饋：耳朵太生硬、右耳被工具列蓋住 → 改 **E1 圓弧尖耳**（SVG，外側往外斜 8°），工具列只留貓頭 logo（文字放滑鼠提示）、`max-width: calc(100% - 104px)` 從耳朵右邊開始排
+  - [x] **提醒**（2026-10-30；使用者實測 OK）：到價（🔔 每檔設上限／下限）、大漲大跌（預設開，±3%）、背景提醒（預設關）；提醒只用框裡的貓掌泡泡
+    - 流程：sw.js 每次抓完 → `PSAlerts.check()` → 新的放進 `storage.session.alertQueue`、記進 `alertFired` → 所有框收到變更，看得見的框顯示第一個 → 8 秒或點掉送 `dismissAlert`
+    - 框藏著或分頁看不見時泡泡不顯示也不計時，叫出來再補顯示；換語言時泡泡文字重寫（測試頁發現：泡泡在讀到設定前先用預設語言產生）
+    - 價格不是成交價時泡泡標「買／賣」，完整說明放滑鼠提示（原本整句放泡泡裡太長會換行）
+    - 實測時「點圖示沒反應」：其實是框停在藏起來的狀態，又連點好幾下（藏、叫出、藏…），看起來像沒反應；在 Service Worker 主控台監看 `hidden` 的變化確認每點一下只切換一次，不是程式問題。排查方法：`chrome.storage.onChanged` 印出 `hidden` 變化＋`chrome.action.onClicked` 記點擊
+    - Node 測試 70 項（新增：上下限剛好等於、±3% 邊界、休市不響、一天一次與隔天再響、背景只抓有設的、新設定預設值、整合：放進佇列只一次＋dismissAlert、鬧鐘開關＋框藏著時只抓 AAPL）；測試頁看過泡泡、標亮、🔔 編輯（存、Enter 存、亂打當沒設、清除）、% 超過 20 改成 20、西班牙文、隱身
 
 ## 7. 實測發現
 
@@ -358,4 +374,7 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 - 2026-10-28：要公開到 GitHub，沿用 FreeLiveSub 的 i18n 架構
 - 2026-10-28：名稱定為 **PeekStock**。不選的名字：QuotePeek（已有同名擴充功能）、PeekStockTicker（太長，搜尋會被「stock ticker」淹沒）、GhostTicker（ghost stock 有負面意思）、HushTicker（和 HUSH 加密貨幣撞名）、FreeTicker（太普通）
 - 2026-10-29：照原本的版本順序做（v0.3 外殼 → v0.4 老闆鍵 → v0.5 自選管理）；分段顯示和自己新增股票都留到 v0.5，不提前。在那之前可在 Service Worker 主控台用 `PSPrefs.load()`＋`chrome.storage.local.set({ prefs })` 暫時新增
+- 2026-10-30：改名 **PeekaStock**（中文「偷喵看盤」）。不選：PeeCaStock（英文 pee＝尿尿）。網路上沒搜到同名擴充功能；概念相近的有 iOS 的 PeepStock（偽裝成郵件 App）
+- 2026-10-30：要做提醒（到價、大漲大跌 ±3% 可調）：預設只在框看得見時檢查，另可開「背景提醒」（每 1 分鐘、只抓有設提醒的股票、只在開盤時段，預設關）；提醒方式只用**框裡的貓掌泡泡**（不用系統通知），隱身外觀時只把那一列標亮
+- 2026-10-30：貓耳朵太生硬（直角三角形）且會被工具列擋住 → 改圓潤耳朵，使用者選 **E1**（圓弧尖耳），工具列改成從耳朵右邊開始排
 - 2026-10-28：資料夾配置：`chrome-ext-dev\tab-subtitle-spike`（FreeLiveSub）與 `chrome-ext-dev\PeekStock` 並排，各自獨立 repo

@@ -3,8 +3,10 @@
 //   status：群組 id → { ok, error, at, fails, count }，懸浮框顯示錯誤用
 //   misLag：MIS 盤中延遲統計（CLAUDE.md 7.2 留下的問題：長時間觀察 MIS 延遲）
 //   hidden：老闆鍵狀態（true＝所有分頁的框都藏起來）
+//   alertQueue：還沒顯示完的提醒（框顯示貓掌泡泡，顯示完送 dismissAlert 拿掉）；alertFired：今天響過的提醒 id
 // 沒有分頁送 tick（沒有看得見的分頁）或框藏起來時，就完全不發請求；多個 tick 同時進來共用同一次抓取。
-importScripts('markets.js', 'prefs.js', 'sources.js', 'schedule.js');
+// 例外：使用者打開「背景提醒」時，chrome.alarms 每 1 分鐘只抓有設提醒的項目（PSAlerts.watched），只在開盤時段。
+importScripts('markets.js', 'prefs.js', 'sources.js', 'schedule.js', 'alerts.js');
 
 // storage.session 預設只有背景程式讀得到，懸浮框（content script）要先開放才能讀和收到變更
 chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' });
@@ -36,15 +38,23 @@ async function lookup(m) {
   return found ? { found } : { error: 'notFound' };
 }
 
+// 框顯示完一個提醒（停 8 秒或被點掉）就從佇列拿掉；所有分頁的框都會收到變更
+async function dismissAlert(m) {
+  const { alertQueue = [] } = await chrome.storage.session.get('alertQueue');
+  await chrome.storage.session.set({ alertQueue: alertQueue.filter((a) => a.id !== m.id) });
+}
+
+const startRefresh = (opts) => { running ??= refresh(opts).finally(() => { running = null; }); };
 const COMMANDS = {
-  tick: () => { running ??= refresh().finally(() => { running = null; }); },
+  tick: () => startRefresh(),
   toggleHidden,
+  dismissAlert,
 };
 const REPLIES = { lookup };   // 要回覆結果的指令
 chrome.runtime.onMessage.addListener((m, sender, reply) => {
   if (m.to !== 'sw') return;
   if (!REPLIES[m.cmd]) {
-    COMMANDS[m.cmd]?.();   // 不回傳它的 Promise：新版 Chrome 會把回傳的 Promise 當成「要回覆」
+    COMMANDS[m.cmd]?.(m);   // 不回傳它的 Promise：新版 Chrome 會把回傳的 Promise 當成「要回覆」
     return;
   }
   REPLIES[m.cmd](m).then(reply, (e) => reply(errorOf(e)));
@@ -55,16 +65,39 @@ chrome.commands.onCommand.addListener((cmd) => {
 });
 chrome.action.onClicked.addListener(() => toggleHidden());
 
-async function refresh() {
+// 背景提醒：打開時每 1 分鐘叫醒一次（chrome.alarms 最短 30 秒），關掉就取消
+const ALARM = 'bgAlert';
+const syncAlarm = (p) => (p.bgAlert ? chrome.alarms.create(ALARM, { periodInMinutes: 1 }) : chrome.alarms.clear(ALARM));
+PSPrefs.load().then(syncAlarm);
+PSPrefs.watch(syncAlarm);
+chrome.alarms.onAlarm.addListener((a) => {
+  if (a.name === ALARM) startRefresh({ background: true });
+});
+
+// background＝背景提醒叫醒的：就算框藏起來也抓，但只抓有設提醒的項目
+async function refresh({ background = false } = {}) {
   const now = Date.now();
   const [prefs, stored] = await Promise.all([PSPrefs.load(), chrome.storage.session.get(['quotes', 'status', 'misLag', 'hidden'])]);
-  if (stored.hidden) return;   // 框藏起來時不抓（框本來就不送 tick，這裡再擋一次舊的框）
+  if (stored.hidden && !background) return;   // 框藏起來時不抓（框本來就不送 tick，這裡再擋一次舊的框）
   const all = PSPrefs.items(prefs);
-  const plans = GROUPS.map((g) => ({ ...g, items: all.filter((i) => i.group === g.id) }));
+  const wanted = background ? PSAlerts.watched(all, prefs) : all;
+  const plans = GROUPS.map((g) => ({ ...g, items: wanted.filter((i) => i.group === g.id) }));
   const todo = PSSchedule.due(plans, now, state, stored.quotes ?? {});
   if (!todo.length) return;
   const results = await Promise.all(todo.map(run));
-  await save(results, stored);
+  const quotes = await save(results, stored);
+  await queueAlerts(all, quotes, prefs);
+}
+
+// 這次抓完有沒有該響的提醒：新的加進佇列、記為今天響過（佇列最多留 20 個）
+async function queueAlerts(items, quotes, prefs) {
+  const now = Date.now();
+  const { alertQueue = [], alertFired = {} } = await chrome.storage.session.get(['alertQueue', 'alertFired']);
+  const fired = PSAlerts.prune(alertFired, now);
+  const hits = PSAlerts.check(items, quotes, prefs, fired, now);
+  if (!hits.length) return;
+  hits.forEach((h) => { fired[h.id] = true; });
+  await chrome.storage.session.set({ alertQueue: [...alertQueue, ...hits].slice(-20), alertFired: fired });
 }
 
 // 錯誤只存代碼和細節，框再翻成目前介面語言的文字（sources.js 的 fail；沒有代碼的當 other）
@@ -79,7 +112,7 @@ async function run(plan) {
     return { id: plan.id, quotes, status: { ok: true, at: Date.now(), fails: 0, count: quotes.length } };
   } catch (e) {
     s.fails += 1;
-    console.warn(`[PeekStock] ${plan.id} failed (${s.fails} in a row): ${e.message}`);
+    console.warn(`[PeekaStock] ${plan.id} failed (${s.fails} in a row): ${e.message}`);
     return { id: plan.id, quotes: [], status: { ok: false, ...errorOf(e), at: Date.now(), fails: s.fails, count: 0 } };
   }
 }
@@ -94,6 +127,7 @@ async function save(results, stored) {
   const tw = results.find((r) => r.id === 'tw');
   const misLag = tw?.quotes.length ? countLag(stored.misLag, tw.quotes) : stored.misLag;
   await chrome.storage.session.set({ quotes, status, ...(misLag && { misLag }) });
+  return quotes;
 }
 
 // ---------- MIS 延遲統計 ----------

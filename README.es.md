@@ -1,10 +1,10 @@
-# 📈 PeekStock
+# 📈 PeekaStock
 
 **Mira la bolsa a escondidas en el trabajo: una pequeña ventana flotante en la esquina de cualquier página con cotizaciones en tiempo real de Taiwán y EE. UU. e índices mundiales, que se oculta con un atajo.**
 
-**Ventana flotante que se puede mover y redimensionar**, **tecla del jefe**, **modo discreto**, **lista de seguimiento con pestañas propias** e interfaz en seis idiomas. Solo cotizaciones: no opera.
+**Ventana flotante que se puede mover y redimensionar**, **tecla del jefe**, **modo discreto**, **alertas de precio y grandes movimientos**, **lista de seguimiento con pestañas propias** e interfaz en seis idiomas. Solo cotizaciones: no opera.
 
-[![Version](https://img.shields.io/badge/version-v0.7.0-1D9E75)](manifest.json)
+[![Version](https://img.shields.io/badge/version-v0.7.0-FFC23D)](manifest.json)
 [![Chrome](https://img.shields.io/badge/Chrome-desktop-4285F4)](#-instalación)
 [![Free](https://img.shields.io/badge/free-no%20API%20key-2f8a4b)](#-privacidad)
 [![License](https://img.shields.io/badge/license-MIT-5C4033)](LICENSE)
@@ -26,8 +26,10 @@ Quería echar un vistazo al mercado durante el trabajo, pero abrir una aplicaci�
 ## ✨ Funciones
 
 - **En todas las páginas**: la ventana aparece en la esquina de cada pestaña y todas comparten posición y tamaño. Se arrastra, se redimensiona desde cualquier esquina y sigue visible en vídeos a pantalla completa.
-- **Tecla del jefe**: pulsa **Alt+Shift+H** (o el icono de PeekStock en la barra) para ocultar la ventana en todas las pestañas a la vez. Mientras está oculta no se descarga nada.
+- **Tecla del jefe**: pulsa **Alt+Shift+H** (o el icono de PeekaStock en la barra) para ocultar la ventana en todas las pestañas a la vez. Mientras está oculta no se descarga nada.
 - **Modo discreto ◐**: fondo transparente, texto gris y ▲▼ en lugar de colores; parece parte de la página.
+- **Vista mini ▁**: la ventana se reduce a las orejas del gato y una línea, con una cotización distinta cada 4 s.
+- **Alertas**: si una cotización se mueve más de ±3% (ajustable) o llega a tu precio objetivo, aparece un bocadillo con una huella de gato (p. ej. «¡NVDA sube ▲3.2%!»); en modo discreto solo se resalta la fila. No usa notificaciones del sistema.
 - **Lista de seguimiento**: escribe `2330` o `AAPL` para añadir; detecta automáticamente si cotiza en TWSE, TPEx o EE. UU. Las acciones de EE. UU. muestran el ticker y las de Taiwán el nombre.
 - **Pestañas**: `Todo | Taiwán | EE. UU. | Mundo`, más tus propias pestañas (p. ej. «Tecnología», «Dividendos»). Una acción puede estar en varias pestañas.
 - **Índices mundiales**: 16 índices de Taiwán, EE. UU., China, Hong Kong, Japón, Corea, Singapur, Reino Unido, Francia y Alemania; cada uno se puede activar o desactivar.
@@ -59,33 +61,51 @@ flowchart LR
 
 ## 🚀 Instalación
 
-PeekStock aún no está en Chrome Web Store. Instálalo con «Cargar descomprimida»:
+PeekaStock aún no está en Chrome Web Store. Instálalo con «Cargar descomprimida»:
 
-1. Pulsa **[⬇ Descargar ZIP](https://github.com/Ashur5457/PeekStock/archive/refs/heads/main.zip)** y descomprímelo (obtendrás la carpeta `PeekStock-main`). Con git: `git clone https://github.com/Ashur5457/PeekStock.git`
-2. Abre `chrome://extensions` y activa el **Modo de desarrollador** (arriba a la derecha)
-3. Pulsa **Cargar descomprimida** y elige la carpeta `PeekStock-main` (la que contiene directamente `manifest.json`)
-4. Pulsa el botón de pieza de puzle 🧩 de la barra y fija PeekStock (el icono oculta o muestra la ventana)
-5. **Recarga** las páginas que ya tengas abiertas; la ventana aparece abajo a la derecha
+### 1. Descargar
+
+Pulsa **[⬇ Descargar ZIP](https://github.com/Ashur5457/PeekaStock/archive/refs/heads/main.zip)** y descomprímelo (obtendrás la carpeta `PeekaStock-main`). Con git: `git clone https://github.com/Ashur5457/PeekaStock.git`
+
+### 2. Activar el modo de desarrollador
+
+Abre `chrome://extensions` y activa el **Modo de desarrollador** (arriba a la derecha)
+
+<img src="docs/readme/step2.png" width="700" alt="2. Activar el modo de desarrollador">
+
+### 3. Cargar
+
+Pulsa **Cargar descomprimida** y elige la carpeta `PeekaStock-main` (la que contiene directamente `manifest.json`)
+
+### 4. Fijar el icono
+
+Pulsa el botón de pieza de puzle 🧩 de la barra y fija PeekaStock (el icono oculta o muestra la ventana)
+
+### 5. Recargar las páginas
+
+**Recarga** las páginas que ya tengas abiertas; la ventana aparece abajo a la derecha
 
 ## 🎬 Uso
 
-1. Pasa el ratón sobre la ventana para ver la barra: **⚙** ajustes, **◐** modo discreto, **👁** ocultar, **↺** restablecer posición. Arrastra el texto «PeekStock» para mover la ventana.
+1. Pasa el ratón sobre la ventana para ver la barra: **⚙** ajustes, **▁** vista mini, **◐** modo discreto, **👁** ocultar, **↺** restablecer posición. Arrastra la barra (la cabeza del gato) para mover la ventana.
 2. **⚙ Ajustes**:
    - **Lista de seguimiento**: escribe un código y pulsa Añadir; ↑↓ para ordenar, ✕ para quitar
    - **Pestañas propias**: añadir, ✎ renombrar, ↑↓, ✕; en «Añadir a la pestaña» marca las acciones e índices que quieras incluir
    - **Índices**: actívalos o desactívalos uno a uno
+   - **Alertas**: grandes movimientos ±% (3% por defecto); para una alerta de precio pulsa 🔔 en la fila y fija un precio superior/inferior; con «En segundo plano» activado, los valores con alerta se comprueban cada minuto aunque no veas la ventana (solo con el mercado abierto) y el aviso aparece la próxima vez que la veas
    - **Vista**: idioma y colores
-3. **Tecla del jefe Alt+Shift+H**: oculta la ventana en todas las pestañas; pulsa otra vez para mostrarla. El icono de PeekStock hace lo mismo.
+3. **Tecla del jefe Alt+Shift+H**: oculta la ventana en todas las pestañas; pulsa otra vez para mostrarla. El icono de PeekaStock hace lo mismo.
 
 > [!TIP]
 > Si Alt+Shift+H no hace nada, puede que otra extensión lo use. Asigna otro atajo en `chrome://extensions/shortcuts`.
 
 ## 🔐 Permisos
 
-Chrome avisa de que PeekStock puede «leer y cambiar todos tus datos de todos los sitios web». Se debe a que la ventana se dibuja en **todas las páginas**, así que su script tiene que cargarse en todas ellas.
+Chrome avisa de que PeekaStock puede «leer y cambiar todos tus datos de todos los sitios web». Se debe a que la ventana se dibuja en **todas las páginas**, así que su script tiene que cargarse en todas ellas.
 
 - La ventana solo dibuja cotizaciones; **no lee ni recopila el contenido de las páginas**.
 - Solo se conecta a dos sitios: `mis.twse.com.tw` (Bolsa de Taiwán) y `query1.finance.yahoo.com` (Yahoo Finance).
+- También usa el permiso `alarms`, solo si activas las alertas en segundo plano: despierta el proceso en segundo plano una vez por minuto.
 
 ## ⚠️ Limitaciones conocidas
 
@@ -105,12 +125,12 @@ Chrome avisa de que PeekStock puede «leer y cambiar todos tus datos de todos lo
 
 ## 📜 Aviso legal
 
-PeekStock solo muestra cotizaciones y **no es asesoramiento de inversión**. Las cotizaciones pueden llegar con retraso, ser erróneas o no estar disponibles; guíate por tu bróker o por la bolsa. Este proyecto no tiene relación con la Bolsa de Taiwán ni con Yahoo.
+PeekaStock solo muestra cotizaciones y **no es asesoramiento de inversión**. Las cotizaciones pueden llegar con retraso, ser erróneas o no estar disponibles; guíate por tu bróker o por la bolsa. Este proyecto no tiene relación con la Bolsa de Taiwán ni con Yahoo.
 
 ## 📂 Archivos
 
 ```
-PeekStock/
+PeekaStock/
 ├── manifest.json         # Manifiesto de la extensión (MV3)
 ├── sw.js                 # Segundo plano: programación, descarga, tecla del jefe, búsqueda de códigos
 ├── sources.js            # Fuentes: MIS de la Bolsa de Taiwán, Yahoo spark (análisis y códigos de error)
@@ -119,6 +139,7 @@ PeekStock/
 ├── prefs.js              # Ajustes; operaciones de la lista y las pestañas
 ├── overlay.js            # Ventana flotante (Shadow DOM): arrastrar, redimensionar, pestañas, tabla
 ├── panel.js              # Panel de ajustes ⚙
+├── alerts.js             # Reglas de alerta: precio, grandes movimientos, una vez al día
 ├── box.js                # Cálculo de posición y tamaño de la ventana
 ├── i18n.js               # Textos de la interfaz (una línea por frase, seis idiomas en paralelo)
 ├── _locales/             # Descripción y texto del atajo en seis idiomas

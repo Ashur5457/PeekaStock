@@ -21,25 +21,50 @@
   const { t } = PSI18n;    // 查翻譯；不要再拿 t 當區域變數名稱（CLAUDE.md 第 4 節坑 3）
   // MIS 盤中常常沒有成交價，改用買賣價時標出來（i18n 的 tag.bid／tag.ask，提示 tag.bidHint／tag.askHint）
   const FROM_TAG = { bid: 'bid', ask: 'ask' };
+  // 偷喵配色（和圖示一致）：黑貓的炭黑底＋金色眼睛當強調色。貓的裝飾只在一般外觀出現，隱身外觀全部藏起來
+  const GOLD = '#FFC23D';
+  // 工具列上的小貓頭（圖示裡那隻黑貓）
+  const CAT_HEAD = `<svg class="logo" viewBox="0 0 32 32" width="16" height="16" aria-hidden="true">
+    <path d="M5 15 L6 4 L12 9 Q16 8 20 9 L26 4 L27 15 Q28 28 16 28 Q4 28 5 15Z" fill="#25232B" stroke="${GOLD}" stroke-width="1.6" stroke-linejoin="round"/>
+    <ellipse cx="11.5" cy="17.5" rx="2.8" ry="3.2" fill="#FFD23F"/><ellipse cx="20.5" cy="17.5" rx="2.8" ry="3.2" fill="#FFD23F"/>
+    <ellipse cx="11.5" cy="17.5" rx="1" ry="2.7" fill="#0E0D12"/><ellipse cx="20.5" cy="17.5" rx="1" ry="2.7" fill="#0E0D12"/></svg>`;
+  // 縮放把手的貓掌印（金色）
+  const PAW = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><g fill="${GOLD}">
+    <ellipse cx="10" cy="13.5" rx="5" ry="4"/><circle cx="4.3" cy="8.2" r="2"/><circle cx="8" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="15.7" cy="8.2" r="2"/></g></svg>`);
+  // 框頂的貓耳朵（E1 圓弧尖耳）：邊是弧線、尖端圓潤、微微往外張；side＝-1 左耳、1 右耳
+  const EAR = (side) => `<span class="ear" style="transform: rotate(${side * 8}deg)"><svg width="30" height="24" viewBox="0 0 30 24" aria-hidden="true">
+    <path d="M1 23 C3 14 7 6 12 2 Q15 -0.5 18 2 C23 7 27 14 29 23 Z" fill="#1E1C24" stroke="#3A3646"/>
+    <path d="M8 23 C9 17 11.5 11 14 8 Q15 7 16 8 C18.5 11 21 17 22 23 Z" fill="#FF9DB0"/></svg></span>`;
   const STYLE = `
     div.box { position: fixed; z-index: 2147483647; display: flex; flex-direction: column; box-sizing: border-box;
-              border-radius: 10px; background: rgba(24, 24, 24, .88); color: #eee; border: 1px solid #444;
-              font: 12px/1.5 "Microsoft JhengHei", system-ui, sans-serif; box-shadow: 0 4px 16px rgba(0, 0, 0, .35); }
+              border-radius: 10px; background: rgba(30, 28, 36, .97); color: #eee; border: 1px solid #3A3646;
+              font: 12px/1.5 "Microsoft JhengHei", system-ui, sans-serif; box-shadow: 0 4px 16px rgba(0, 0, 0, .35);
+              transition: opacity .16s, transform .16s; }
 
-    /* 工具列：浮在框上緣的膠囊，滑鼠移到框上才出現；按住拖曳＝移動框 */
-    div.bar { position: absolute; top: -20px; right: 12px; z-index: 3; display: flex; align-items: center; gap: 6px;
-              padding: 3px 4px 3px 10px; border-radius: 999px; background: #333; border: 1px solid #555;
+    /* 框頂的貓耳朵：整個框像一隻趴著偷看的黑貓；滑鼠移上框時左耳抖一下（工具列在右邊，不會擋到） */
+    div.ears { position: absolute; top: -21px; left: 14px; display: flex; gap: 10px; pointer-events: none; transition: transform .16s; }
+    span.ear { display: block; transform-origin: 50% 100%; }
+    span.ear svg { display: block; overflow: visible; transform-origin: 50% 100%; }
+    div.box:hover span.ear:first-child svg { animation: twitch .5s ease-in-out; }
+    @keyframes twitch { 30% { transform: rotate(-12deg); } 60% { transform: rotate(6deg); } }
+
+    /* 工具列：浮在框上緣的膠囊，滑鼠移到框上才出現；按住拖曳＝移動框。
+       從耳朵右邊開始（最寬到框寬減掉耳朵那一段），永遠不會蓋住耳朵；名稱只留貓頭，滑鼠移上看名字 */
+    div.bar { position: absolute; top: -20px; right: 12px; z-index: 3; display: flex; flex-wrap: wrap; justify-content: flex-end;
+              align-items: center; gap: 6px; max-width: calc(100% - 104px);
+              padding: 3px 4px 3px 8px; border-radius: 999px; background: #333; border: 1px solid #555;
               font: 11px/1 system-ui, sans-serif; color: #bbb; cursor: move; user-select: none;
               opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .15s; }
     div.box:hover div.bar { opacity: 1; transform: none; }
     div.bar button { width: 24px; height: 24px; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
                      color: #eee; background: #444; font: 14px/1 system-ui, sans-serif; }
     div.bar button:hover { background: #555; }
-    div.bar button.on { background: #1D9E75; }
+    div.bar button.on { background: ${GOLD}; color: #2A1F00; }
+    svg.logo { flex: none; margin-right: -2px; }
 
-    /* 四個角的縮放把手：滑鼠移上框才出現 L 形標記，拖哪個角就往哪個方向縮放 */
-    div.corner { position: absolute; z-index: 2; width: 12px; height: 12px; opacity: 0; transition: opacity .15s;
-                 border: 0 solid #888; }
+    /* 四個角的縮放把手：滑鼠移上框才出現，一般外觀是金色貓掌印、隱身外觀是 L 形標記；拖哪個角就往哪個方向縮放 */
+    div.corner { position: absolute; z-index: 2; width: 14px; height: 14px; opacity: 0; transition: opacity .15s;
+                 border: 0 solid transparent; background: url("${PAW}") center / 12px no-repeat; }
     div.box:hover div.corner { opacity: 1; }
     div.corner[data-c=nw] { left: 0; top: 0; cursor: nwse-resize; border-width: 2px 0 0 2px; border-top-left-radius: 10px; }
     div.corner[data-c=ne] { right: 0; top: 0; cursor: nesw-resize; border-width: 2px 2px 0 0; border-top-right-radius: 10px; }
@@ -51,7 +76,7 @@
     button.tab { flex: none; padding: 2px 9px; border: 0; border-radius: 999px; cursor: pointer; white-space: nowrap;
                  color: #999; background: none; font: 11px/1.5 "Microsoft JhengHei", system-ui, sans-serif; }
     button.tab:hover { color: #eee; }
-    button.tab.on { color: #fff; background: #1D9E75; }
+    button.tab.on { color: #2A1F00; background: ${GOLD}; }
 
     /* 報價：放不下就在框裡捲動；下方留空間，捲軸才不會被右下角的縮放把手蓋住 */
     div.list { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; margin: 6px 3px 0 0; padding: 0 6px 0 10px;
@@ -63,7 +88,10 @@
     td.tag { color: #F8B500; padding: 0 2px; }
     td.when { color: #999; }
     tr.stale td { opacity: .45; }
-    tr.section td { padding: 6px 5px 1px; color: #1D9E75; font-size: 11px; font-weight: 600; letter-spacing: .08em; }
+    tr.stale td.when::after { content: " \\1F4A4"; font-size: 10px; }   /* 資料舊了：貓睡著了 💤 */
+    tr.section td { padding: 6px 5px 1px; color: ${GOLD}; font-size: 11px; font-weight: 600; letter-spacing: .08em; }
+    td.empty { padding: 10px 5px; color: #999; white-space: normal; }
+    td.empty::before { content: "\\1F43E  "; }   /* 🐾 */
     tr.section:first-child td { padding-top: 0; }
     tr.closed td.when { color: #666; }
     /* 漲跌顏色：預設紅漲綠跌（台灣習慣）；設定 upColor=green 時綠漲紅跌（美國習慣） */
@@ -71,9 +99,36 @@
     div.box[data-up=green] .up { color: #4cd07d; } div.box[data-up=green] .down { color: #ff6b6b; }
     div.foot { margin: 4px 10px 10px; padding-top: 4px; border-top: 1px solid #444; color: #aaa; font-size: 11px; }
     div.err { color: #ff9f6b; }
+    div.err::before { content: "\\1F640  "; }   /* 🙀 抓不到資料 */
     div.foot[hidden] { display: none; }
 
-    /* 隱身外觀：看起來像網頁本身的灰色小字。漲跌只靠 ▲▼，不分顏色 */
+    /* 提醒：框上方跳出貓掌泡泡（點一下或 8 秒後消失），觸發提醒的那一列淡淡標亮；隱身外觀只標亮、不跳泡泡 */
+    div.bubble { position: absolute; z-index: 4; top: 6px; left: 8px; right: 8px; padding: 6px 10px; border-radius: 12px;
+                 background: #2A2633; border: 1.5px solid ${GOLD}; color: #fff; font-weight: 600; cursor: pointer;
+                 box-shadow: 0 6px 16px rgba(0, 0, 0, .4); animation: pop .25s ease-out; }
+    div.bubble::before { content: "\\1F43E  "; }   /* 🐾 */
+    div.bubble[hidden] { display: none; }
+    div.bubble small { font-weight: normal; color: #bbb; margin-left: 4px; }
+    @keyframes pop { from { transform: translateY(-6px) scale(.96); opacity: 0; } }
+    tr.alerted td { background: rgba(255, 194, 61, .16); }
+    div.box[data-look=stealth] div.bubble { display: none; }
+    div.box[data-look=stealth] tr.alerted td { background: rgba(128, 128, 128, .14); }
+
+    /* 迷你偷看模式：只剩耳朵＋一行報價（每 4 秒換下一檔），高度跟著內容 */
+    div.miniline { display: none; align-items: center; gap: 4px; padding: 8px 8px 6px 10px; }
+    div.box.mini { height: auto !important; }
+    div.box.mini div.miniline { display: flex; }
+    div.box.mini div.tabs, div.box.mini div.list, div.box.mini div.foot, div.box.mini div.corner { display: none; }
+
+    /* 按 👁 藏起來的動畫：耳朵先縮下去、框往下淡出（老闆鍵和點圖示不走這個，維持瞬間消失） */
+    div.box.hiding { opacity: 0; transform: translateY(8px); }
+    div.box.hiding div.ears { transform: translateY(14px); }
+
+    /* 隱身外觀：看起來像網頁本身的灰色小字。漲跌只靠 ▲▼，不分顏色；所有貓的裝飾都藏起來 */
+    div.box[data-look=stealth] div.ears, div.box[data-look=stealth] svg.logo { display: none; }
+    div.box[data-look=stealth] tr.stale td.when::after, div.box[data-look=stealth] td.empty::before { content: none; }
+    div.box[data-look=stealth] div.err::before { content: "\\26A0  "; }   /* ⚠ */
+    div.box[data-look=stealth] div.corner { background: none; }
     div.box[data-look=stealth] { background: transparent; border-color: transparent; box-shadow: none; color: #888; }
     div.box[data-look=stealth] td, div.box[data-look=stealth] div.foot, div.box[data-look=stealth] div.err { color: #888; }
     div.box[data-look=stealth] tr.stale td { opacity: .6; }
@@ -87,16 +142,20 @@
   const root = host.attachShadow({ mode: 'open' });
   root.innerHTML = `<style>${STYLE}</style>
     <div class="box">
-      <div class="bar">PeekStock<button data-act="settings" data-i18n-title="bar.settings">⚙</button><button data-act="stealth" data-i18n-title="bar.stealth">◐</button><button data-act="hide" data-i18n-title="bar.hide">👁</button><button data-act="reset" data-i18n-title="bar.reset">↺</button></div>
+      <div class="ears">${EAR(-1)}${EAR(1)}</div>
+      <div class="bar" title="PeekaStock">${CAT_HEAD}<button data-act="settings" data-i18n-title="bar.settings">⚙</button><button data-act="mini" data-i18n-title="bar.mini">▁</button><button data-act="stealth" data-i18n-title="bar.stealth">◐</button><button data-act="hide" data-i18n-title="bar.hide">👁</button><button data-act="reset" data-i18n-title="bar.reset">↺</button></div>
       <div class="corner" data-c="nw"></div><div class="corner" data-c="ne"></div>
       <div class="corner" data-c="sw"></div><div class="corner" data-c="se"></div>
       <div class="tabs"></div>
       <div class="list"><table></table></div>
+      <div class="miniline"><table></table></div>
       <div class="foot"></div>
+      <div class="bubble" hidden></div>
     </div>
     ${PSPanel.HTML}`;
   const q = (sel) => root.querySelector(sel);
-  const el = q('.box'), bar = q('.bar'), table = q('table'), foot = q('.foot'), tabsBar = q('div.tabs');
+  const el = q('.box'), bar = q('.bar'), table = q('div.list table'), foot = q('.foot'), tabsBar = q('div.tabs');
+  const miniTable = q('div.miniline table');
 
   let prefs = PSPrefs.DEFAULT;
   let session = { quotes: {}, status: {}, misLag: null };
@@ -160,7 +219,12 @@
       apply();
     },
     stealth: () => PSPrefs.update({ stealth: !prefs.stealth }),
-    hide: () => send({ to: 'sw', cmd: 'toggleHidden' }),
+    mini: () => PSPrefs.update({ mini: !prefs.mini }),
+    // 先播 0.16 秒「耳朵縮下去」的動畫再藏（只有按 👁 才有；老闆鍵和點圖示維持瞬間消失）
+    hide: () => {
+      el.classList.add('hiding');
+      setTimeout(() => send({ to: 'sw', cmd: 'toggleHidden' }), 160);
+    },
     reset: () => {
       box = null;
       apply();
@@ -204,6 +268,7 @@
     const lag = quote?.time ? (now - quote.time) / 1000 : null;
     tr.classList.toggle('stale', open && lag > STALE_SEC);
     tr.classList.toggle('closed', !open);
+    tr.classList.toggle('alerted', (session.alertQueue ?? []).some((a) => a.key === item.key));   // 剛觸發提醒的那一列
     const [label, hint] = PSPrefs.labelOf(item, quote, t);   // 美股顯示代號、台股顯示名稱，另一個放滑鼠提示
     const name = cell(label, 'name');
     name.title = [label, hint].filter(Boolean).join(' ');
@@ -255,18 +320,45 @@
     return tr;
   }
 
+  // 分頁裡沒有東西時的提示（一般外觀前面有 🐾）
+  function emptyRow() {
+    const tr = document.createElement('tr');
+    const td = cell(t('ov.empty'), 'empty');
+    td.colSpan = 5;
+    tr.append(td);
+    return tr;
+  }
+
   // 目前分頁的項目；裡面有好幾個市場時才分段加標題（PSPrefs.sections）
+  const currentItems = () => {
+    const list = PSPrefs.items(prefs);
+    return list.filter(PSPrefs.currentTab(prefs, list).has);
+  };
+
   function render() {
     const now = Date.now();
     const quotes = session.quotes ?? {};
-    const list = PSPrefs.items(prefs);
-    const secs = PSPrefs.sections(list.filter(PSPrefs.currentTab(prefs, list).has));
+    const secs = PSPrefs.sections(currentItems());
     const rows = secs.flatMap((s) => [
       ...(secs.length > 1 ? [sectionRow(t(s.titleKey))] : []), ...s.items.map((i) => rowView(i, quotes[i.key], now)),
     ]);
-    table.replaceChildren(...rows);
+    table.replaceChildren(...(rows.length ? rows : [emptyRow()]));
+    renderMini(now, quotes);
     footView();
   }
+
+  // 迷你偷看模式：只顯示一檔，每 4 秒換下一檔（目前分頁的順序）
+  const MINI_MS = 4000;
+  let miniIndex = 0;
+  function renderMini(now = Date.now(), quotes = session.quotes ?? {}) {
+    if (!prefs.mini) return;
+    const items = PSPrefs.sections(currentItems()).flatMap((s) => s.items);
+    miniTable.replaceChildren(items.length ? rowView(items[miniIndex % items.length], quotes[items[miniIndex % items.length].key], now) : emptyRow());
+  }
+  setInterval(() => {
+    miniIndex += 1;
+    if (prefs.mini && !session.hidden) renderMini();
+  }, MINI_MS);
 
   function renderTabs() {
     const list = PSPrefs.items(prefs);
@@ -280,6 +372,50 @@
     }));
   }
 
+  // ---------- 提醒的貓掌泡泡 ----------
+
+  // 佇列（session.alertQueue，背景程式放進來）一次顯示一個，停 8 秒或被點掉就請背景程式拿掉；
+  // 框藏起來或分頁看不見時不顯示、不計時，等看得見再補顯示。隱身外觀時泡泡由 CSS 藏起來，只剩那一列標亮
+  const BUBBLE_MS = 8000;
+  const bubble = q('div.bubble');
+  let showing = null, bubbleTimer = null;
+  const fmtPct2 = (v) => Math.abs(v ?? 0).toFixed(2);
+
+  function alertText(a) {
+    const item = PSPrefs.items(prefs).find((i) => i.key === a.key);
+    const name = item ? PSPrefs.labelOf(item, session.quotes?.[a.key], t)[0] : a.key;
+    return t(`alert.${a.kind}`, { name, pct: fmtPct2(a.pct), price: fmtPrice(a.price), target: a.kind === 'up' || a.kind === 'down' ? a.target : fmtPrice(a.target) });
+  }
+
+  function dismiss(id) {
+    clearTimeout(bubbleTimer);
+    showing = null;
+    bubble.hidden = true;
+    send({ to: 'sw', cmd: 'dismissAlert', id });
+  }
+
+  function showAlerts() {
+    const next = (session.alertQueue ?? [])[0];
+    const visible = !session.hidden && document.visibilityState === 'visible';
+    if (!next || !visible) {
+      if (!next) bubble.hidden = true;
+      return;
+    }
+    if (showing === next.id) return;
+    showing = next.id;
+    bubble.textContent = alertText(next);
+    bubble.title = FROM_TAG[next.from] ? t(`tag.${next.from}Hint`) : '';   // 不是成交價：泡泡裡標「買／賣」，完整說明放滑鼠提示
+    if (FROM_TAG[next.from]) bubble.append(Object.assign(document.createElement('small'), { textContent: t(`tag.${next.from}`) }));
+    bubble.hidden = false;
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => dismiss(next.id), BUBBLE_MS);
+  }
+  // 泡泡不會跟著報價重畫，但照坑 1 的習慣一樣用 pointerdown
+  bubble.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (showing) dismiss(showing);
+  });
+
   // ---------- tick ----------
 
   let timer = null;
@@ -287,11 +423,15 @@
     if (!chrome.runtime?.id) return clearInterval(timer);   // 擴充功能重新載入過，這個框失效了
     if (session.hidden) return;   // 老闆鍵：藏起來時不抓也不畫
     render();   // 就算不抓，也要重畫（資料時間到了要變灰）
+    showAlerts();
     if (document.visibilityState !== 'visible') return;
     send({ to: 'sw', cmd: 'tick' });
   }
 
-  const updateHidden = () => { host.style.display = session.hidden ? 'none' : ''; };
+  const updateHidden = () => {
+    host.style.display = session.hidden ? 'none' : '';
+    if (!session.hidden) el.classList.remove('hiding');   // 叫出來時把 👁 的藏起來動畫還原
+  };
 
   function applyPrefs(p) {
     prefs = p;
@@ -299,9 +439,13 @@
     PSI18n.apply(root);   // 工具列、面板上的固定文字
     el.dataset.look = p.stealth ? 'stealth' : '';
     el.dataset.up = p.upColor;
+    el.classList.toggle('mini', p.mini);
     q('[data-act=stealth]').classList.toggle('on', p.stealth);
+    q('[data-act=mini]').classList.toggle('on', p.mini);
     renderTabs();
     render();
+    showing = null;   // 泡泡文字用新的語言、名稱重寫
+    showAlerts();
     if (panel.isOpen()) {   // 清單變了（可能是別的分頁改的），面板跟著更新
       panel.render();
       apply();
@@ -320,14 +464,16 @@
     updateHidden();
     if ('hidden' in ch && !session.hidden) tick();   // 叫出來時立刻補抓
     else render();
+    showAlerts();
   });
   PSPrefs.watch(applyPrefs);
   PSPrefs.load().then(applyPrefs);
   // 第一次安裝時背景程式還沒開放 storage.session，讀不到就等 tick 之後的變更通知
-  chrome.storage.session.get(['quotes', 'status', 'misLag', 'hidden']).then((r) => {
+  chrome.storage.session.get(['quotes', 'status', 'misLag', 'hidden', 'alertQueue']).then((r) => {
     session = { ...session, ...r };
     updateHidden();
     render();
+    showAlerts();
   }, () => {});
   chrome.storage.local.get(BOX_KEY).then((r) => {
     box = r[BOX_KEY] ?? null;

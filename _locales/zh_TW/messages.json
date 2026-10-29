@@ -1,11 +1,11 @@
 {
   "extDescription": {
-    "message": "PeekStock — 上班偷看盤：台股／美股即時報價懸浮窗"
+    "message": "PeekaStock — 上班偷看盤：台股／美股即時報價懸浮窗"
   },
   "actionTitle": {
-    "message": "PeekStock：隱藏／顯示（Alt+Shift+H）"
+    "message": "PeekaStock：隱藏／顯示（Alt+Shift+H）"
   },
   "cmdToggleHide": {
-    "message": "隱藏／顯示 PeekStock（所有分頁）"
+    "message": "隱藏／顯示 PeekaStock（所有分頁）"
   }
 }
