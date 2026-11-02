@@ -37,6 +37,9 @@ I wanted to glance at the market during work, but a trading app is too conspicuo
 - **Watchlist**: type `2330` or `AAPL` to add; listed (TWSE) / OTC (TPEx) / US is detected automatically. US stocks show tickers, Taiwan stocks show names.
 - **Tabs**: `All | Taiwan | US | World`, plus your own tabs (e.g. "Tech", "Dividend"). A stock can be in several tabs.
 - **World indices**: 16 indices from Taiwan, US, China, Hong Kong, Japan, Korea, Singapore, UK, France and Germany, each can be turned on or off.
+- **Crypto and futures**: Bitcoin, Ethereum, gold, silver and crude oil, in their own "Crypto/Futures" tab; each can be turned on or off.
+- **US pre-market and after-hours**: during those sessions your US stocks (first 20) show the latest price tagged "Pre" or "Post", measured from the last close. These prices do not trigger alerts.
+- **Mini window ⧉**: press ⧉, then "Open mini window", and quotes float above the desktop, folders, Excel and Word, always on top. Chrome must stay running; you can minimize the host window but not close it.
 - **Up/down colors**: red up, green down (Taiwan convention) or green up, red down (US convention).
 - **UI languages**: 繁中 / English / 日本語 / 简中 / 한국어 / Español, following Chrome's language by default.
 
@@ -48,6 +51,9 @@ I wanted to glance at the market during work, but a trading app is too conspicuo
 | US stocks, Dow Jones, S&P 500, Nasdaq, PHLX Semiconductor | Yahoo Finance | a few seconds |
 | Shanghai, Shenzhen, CSI 300, Hang Seng, Nikkei, STI, FTSE, CAC, DAX | Yahoo Finance | about 15 minutes |
 | KOSPI | Yahoo Finance | about 20 minutes |
+| US pre-market and after-hours | Yahoo Finance | seconds to about 1 minute (updated every 30 s) |
+| Bitcoin, Ethereum | Yahoo Finance | seconds |
+| Gold, silver, crude oil (futures) | Yahoo Finance | about 10 minutes |
 
 - Every row shows its **data time**; intraday rows older than 2 minutes turn gray, so you can see what is stale.
 - Taiwan stocks often have no trade price during the session; PeekaStock then shows the best bid (or ask) and marks it "Bid"/"Ask".
@@ -97,7 +103,7 @@ Click the puzzle button 🧩 in the toolbar and pin PeekaStock (clicking the ico
 
 ## 🎬 Usage
 
-1. Hover over the box to show the toolbar: **⚙** settings, **▁** mini peek, **◐** stealth mode, **👁** hide, **↺** reset position, **?** how it works. Drag the toolbar (cat head) to move the box.
+1. Hover over the box to show the toolbar: **⚙** settings, **▁** mini peek, **◐** stealth mode, **👁** hide, **↺** reset position, **⧉** mini window, **?** how it works. Drag the toolbar (cat head) to move the box.
 2. **⚙ Settings**:
    - **Watchlist**: enter a code and click Add; ↑↓ to reorder, ✕ to remove
    - **Custom tabs**: add, ✎ rename, ↑↓, ✕; tick what goes into a tab under "Add to tab"
@@ -151,6 +157,7 @@ PeekaStock/
 ├── prefs.js              # Settings; watchlist and tab operations
 ├── overlay.js            # Floating box (Shadow DOM): drag, resize, tab bar, quote table
 ├── panel.js              # ⚙ settings panel
+├── popout.html, popout.js  # Host window for the mini window
 ├── alerts.js             # Alert rules: price targets, big moves, once a day
 ├── box.js                # Box position and size math
 ├── blank.js              # Double-click and Esc hide checks

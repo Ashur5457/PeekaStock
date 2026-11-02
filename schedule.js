@@ -1,5 +1,5 @@
 // 排程：這次 tick 要抓哪些。純函式，不碰網路和 chrome，可以在 Node 用假時鐘測（tools/test.mjs）。
-//   plan  = { id, every, source, items }（群組表＋這個群組目前的項目，見 sw.js）
+//   plan  = { id, every, source, items, wanted? }（群組表＋這個群組目前的項目，見 sw.js；wanted＝這個群組自己的抓取條件）
 //   state = { [群組 id]: { last: 上次開始抓的時間, fails: 連續失敗次數 } }
 //   quotes = 目前已有的報價（key → quote）
 // markets.js 要比這個檔案先載入。
@@ -15,7 +15,7 @@ globalThis.PSSchedule ??= (() => {
   function due(plans, now, state, quotes) {
     return plans
       .filter((p) => now - (state[p.id]?.last ?? 0) >= waitOf(p, state[p.id]))
-      .map((p) => ({ ...p, items: p.items.filter((i) => wanted(i, now, quotes)) }))
+      .map((p) => ({ ...p, items: p.items.filter((i) => (p.wanted ?? wanted)(i, now, quotes)) }))
       .filter((p) => p.items.length);
   }
 

@@ -56,7 +56,7 @@ globalThis.PSPanel ??= (() => {
   // 使用說明（工具列 ?）：[圖示, i18n key, 圖示的 i18n key（「買」標記每種語言不同）]
   const HELP = [
     ['👁', 'help.hide'], ['⌨', 'help.keys'], ['◐', 'help.stealth'], ['▁', 'help.mini'], ['↺', 'help.move'],
-    ['🔔', 'help.alerts'], ['💤', 'help.stale'], ['', 'help.tag', 'tag.bid'], ['⏱', 'help.delay'],
+    ['⧉', 'help.pop'], ['🔔', 'help.alerts'], ['💤', 'help.stale'], ['', 'help.tag', 'tag.bid'], ['⏱', 'help.delay'],
   ];
 
   const HTML = `

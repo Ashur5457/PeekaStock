@@ -1,0 +1,23 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PeekaStock</title>
+<style>
+  body { margin: 0; padding: 16px 20px; background: #1E1C24; color: #eee; font: 14px/1.6 "Microsoft JhengHei", system-ui, sans-serif; }
+  h1 { margin: 0 0 6px; font-size: 16px; }
+  p { margin: 0 0 14px; color: #bbb; }
+  button { padding: 8px 18px; border: 0; border-radius: 8px; background: #FFC23D; color: #2A1F00; cursor: pointer; font: inherit; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  peek-stock { display: none; }   /* 框只在小視窗裡顯示（搬進去時這條規則就不適用了） */
+</style>
+<h1>PeekaStock</h1>
+<p data-i18n="pop.hint"></p>
+<button id="open" data-i18n="pop.open"></button>
+<p id="msg"></p>
+<script src="i18n.js"></script>
+<script src="markets.js"></script>
+<script src="prefs.js"></script>
+<script src="box.js"></script>
+<script src="blank.js"></script>
+<script src="panel.js"></script>
+<script src="overlay.js"></script>
+<script src="popout.js"></script>

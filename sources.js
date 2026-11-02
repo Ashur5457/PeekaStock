@@ -1,7 +1,7 @@
 // 資料來源：每個來源是一個函式 (items, fetchFn) => Promise<quote[]>。來源壞了只換這一個函式。
 //   item  = { key, market, group, symbol, … }（見 prefs.js 的 items()）
 //   quote = { key, name, price, prev, chg, pct, time, fetchedAt, from }
-//     time：資料時間（毫秒）；fetchedAt：收到回應的時間；from：價格是成交價（trade）、買價（bid）還是賣價（ask）
+//     time：資料時間（毫秒）；fetchedAt：收到回應的時間；from：價格是成交價（trade）、買價（bid）、賣價（ask）、盤前（pre）還是盤後（post）
 // 「發請求」和「解析回應」分開，解析可以直接拿 tools/samples/ 的真實回應測（見 tools/test.mjs）。
 // 回應不是 JSON（例如被導到同意頁的 HTML）或 HTTP 失敗就丟錯誤，由 sw.js 記下並顯示，不默默沿用舊資料。
 globalThis.PSSources ??= (() => {
@@ -98,7 +98,39 @@ globalThis.PSSources ??= (() => {
     return parts.flat();
   }
 
-  const SOURCES = { mis, spark };
+  // ---------- Yahoo chart：美股盤前盤後（不用 crumb，但一次一檔；實測最新價只晚 2～20 秒，CLAUDE.md 7.4） ----------
+
+  const EXT_MAX = 20;   // 每檔一個請求，每 30 秒一輪，所以只抓前 20 檔自選美股
+
+  // 最後一筆有價格的資料落在盤前或盤後才算；漲跌的基準是上次收盤 regularMarketPrice（previousClose 是更前一天的收盤）。
+  // 其他情況（還沒有今天的盤前成交、已經進入正常交易）回傳 null，畫面維持原本的價格
+  function parseChart(json, at, item) {
+    const r = json?.chart?.result?.[0];
+    const stamps = r?.timestamp ?? [], closes = r?.indicators?.quote?.[0]?.close ?? [];
+    const i = stamps.findLastIndex((_, j) => closes[j] != null);
+    const periods = r?.meta?.currentTradingPeriod;
+    const from = i < 0 ? null : ['pre', 'post'].find((k) => stamps[i] >= periods?.[k]?.start && stamps[i] < periods?.[k]?.end);
+    if (!from) return null;
+    return withChange({
+      key: item.key, name: (r.meta.shortName ?? r.meta.longName ?? item.symbol).replace(/\s+/g, ' '),
+      price: closes[i], prev: r.meta.regularMarketPrice ?? null, time: stamps[i] * 1000, fetchedAt: at, from,
+    });
+  }
+
+  async function chartOne(item, fetchFn) {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.symbol)}?range=1d&interval=1m&includePrePost=true&_=${Date.now()}`;
+    return parseChart(await getJson(fetchFn, url, 'Yahoo'), Date.now(), item);
+  }
+
+  // 一檔失敗不影響其他檔；全部失敗才算這個來源壞了
+  async function ext(items, fetchFn = fetch) {
+    const got = await Promise.allSettled(items.slice(0, EXT_MAX).map((i) => chartOne(i, fetchFn)));
+    const ok = got.filter((g) => g.status === 'fulfilled');
+    if (!ok.length) throw got[0].reason;
+    return ok.map((g) => g.value).filter(Boolean);
+  }
+
+  const SOURCES = { mis, spark, ext };
 
   // ---------- 新增自選股時查代號（存不存在、名稱、台股是上市還是上櫃） ----------
 
@@ -117,5 +149,5 @@ globalThis.PSSources ??= (() => {
 
   const LOOKUP = { tw: lookupTw, us: lookupUs };
 
-  return { SOURCES, LOOKUP, SPARK_MAX, parseMis, parseSpark, num };
+  return { SOURCES, LOOKUP, SPARK_MAX, EXT_MAX, parseMis, parseSpark, parseChart, num };
 })();

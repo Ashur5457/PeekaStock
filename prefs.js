@@ -124,13 +124,17 @@ globalThis.PSPrefs ??= (() => {
 
   // ---------- 分頁 ----------
 
+  const ALT = ['crypto', 'fut'];   // 加密貨幣、期貨：自己一個分頁，不算國際指數
+  const isAlt = (i) => ALT.includes(i.market);
+
   // 內建分頁照市場自動分；自創分頁照 keys。每個分頁都只是「這個項目要不要放進來」。
   // 內建分頁的名稱是 i18n key（nameKey），自創分頁是使用者取的名稱（name）
   const BUILTIN_TABS = [
     { id: 'all', nameKey: 'tab.all', has: () => true },
     { id: 'tw', nameKey: 'tab.tw', has: (i) => i.market === 'tw' },
     { id: 'us', nameKey: 'tab.us', has: (i) => i.market === 'us' },
-    { id: 'world', nameKey: 'tab.world', has: (i) => !['tw', 'us'].includes(i.market) },
+    { id: 'world', nameKey: 'tab.world', has: (i) => !['tw', 'us', ...ALT].includes(i.market) },
+    { id: 'alt', nameKey: 'tab.alt', has: isAlt },
   ];
   const customTab = (x) => ({ id: x.id, name: x.name, custom: true, has: (i) => x.keys.includes(i.key) });
 
@@ -147,7 +151,8 @@ globalThis.PSPrefs ??= (() => {
   const SECTIONS = [
     { id: 'tw', titleKey: 'sec.tw', has: (i) => i.market === 'tw' },
     { id: 'us', titleKey: 'sec.us', has: (i) => i.market === 'us' },
-    { id: 'world', titleKey: 'sec.world', has: () => true },
+    { id: 'world', titleKey: 'sec.world', has: (i) => !isAlt(i) },
+    { id: 'alt', titleKey: 'sec.alt', has: isAlt },
   ];
   const isIndex = (i) => i.key.startsWith('idx:');
 

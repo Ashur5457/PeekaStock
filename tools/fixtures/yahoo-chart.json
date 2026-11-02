@@ -1,0 +1,54 @@
+{
+ "chart": {
+  "result": [
+   {
+    "meta": {
+     "symbol": "AAPL",
+     "shortName": "Apple Inc.",
+     "regularMarketPrice": 344.63,
+     "previousClose": 348.91,
+     "regularMarketTime": 1793390401,
+     "currentTradingPeriod": {
+      "pre": {
+       "timezone": "EST",
+       "end": 1793629800,
+       "start": 1793610000,
+       "gmtoffset": -18000
+      },
+      "regular": {
+       "timezone": "EST",
+       "end": 1793653200,
+       "start": 1793629800,
+       "gmtoffset": -18000
+      },
+      "post": {
+       "timezone": "EST",
+       "end": 1793667600,
+       "start": 1793653200,
+       "gmtoffset": -18000
+      }
+     }
+    },
+    "timestamp": [
+     1793622540,
+     1793622600,
+     1793622660,
+     1793622770
+    ],
+    "indicators": {
+     "quote": [
+      {
+       "close": [
+        344.0263,
+        344.34,
+        344.5,
+        344.42
+       ]
+      }
+     ]
+    }
+   }
+  ],
+  "error": null
+ }
+}

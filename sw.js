@@ -15,7 +15,11 @@ chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONT
 const GROUPS = [
   { id: 'tw', every: 5000, source: 'mis' },      // 自選台股＋台灣兩個指數，一個請求
   { id: 'us', every: 5000, source: 'spark' },    // 自選美股
-  { id: 'idx', every: 30000, source: 'spark' },  // 其他國家指數
+  { id: 'idx', every: 30000, source: 'spark' },  // 其他國家指數、期貨
+  { id: 'crypto', every: 5000, source: 'spark' },  // 加密貨幣（24 小時）
+  // 美股盤前盤後：每檔一個請求，所以只抓自選美股、只在延長交易時段、每 30 秒；不算提醒（alerts.js），背景提醒也不抓
+  { id: 'ext', every: 30000, source: 'ext', extended: true,
+    pick: (i) => i.market === 'us' && i.code, wanted: (i, now) => Boolean(PSMarkets.extSession(i.market, now)) },
 ];
 
 // 每個群組上次抓的時間與連續失敗次數。背景程式閒置被 Chrome 暫停後會清空，最多只是多抓一次
@@ -44,11 +48,20 @@ async function dismissAlert(m) {
   await chrome.storage.session.set({ alertQueue: alertQueue.filter((a) => a.id !== m.id) });
 }
 
+// 工具列 ⧉：打開彈出小視窗的主人視窗（popout.html）；已經開著就叫到前面，不開第二個
+async function openPop() {
+  const url = chrome.runtime.getURL('popout.html');
+  const [open] = await chrome.runtime.getContexts({ documentUrls: [url] });
+  if (open) return chrome.windows.update(open.windowId, { focused: true });
+  return chrome.windows.create({ url, type: 'popup', width: 420, height: 240 });
+}
+
 const startRefresh = (opts) => { running ??= refresh(opts).finally(() => { running = null; }); };
 const COMMANDS = {
   tick: () => startRefresh(),
   toggleHidden,
   dismissAlert,
+  openPop,
 };
 const REPLIES = { lookup };   // 要回覆結果的指令
 chrome.runtime.onMessage.addListener((m, sender, reply) => {
@@ -81,7 +94,8 @@ async function refresh({ background = false } = {}) {
   if (stored.hidden && !background) return;   // 框藏起來時不抓（框本來就不送 tick，這裡再擋一次舊的框）
   const all = PSPrefs.items(prefs);
   const wanted = background ? PSAlerts.watched(all, prefs) : all;
-  const plans = GROUPS.map((g) => ({ ...g, items: wanted.filter((i) => i.group === g.id) }));
+  const plans = GROUPS.filter((g) => !(background && g.extended))
+    .map((g) => ({ ...g, items: wanted.filter(g.pick ?? ((i) => i.group === g.id)) }));
   const todo = PSSchedule.due(plans, now, state, stored.quotes ?? {});
   if (!todo.length) return;
   const results = await Promise.all(todo.map(run));

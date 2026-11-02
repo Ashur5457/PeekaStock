@@ -12,6 +12,7 @@ globalThis.PSAlerts ??= (() => {
     { kind: 'down', test: (q, a, m) => m?.on && q.pct != null && q.pct <= -m.pct, target: (a, m) => m.pct },
   ];
 
+  const EXT = ['pre', 'post'];   // 盤前盤後成交量小、價格容易跳動，不觸發提醒
   const dayIn = (market, now) => new Date(now).toLocaleDateString('sv-SE', { timeZone: PSMarkets.MARKETS[market].tz });
   const idOf = (key, kind, market, now) => `${key}|${kind}|${dayIn(market, now)}`;
 
@@ -20,7 +21,7 @@ globalThis.PSAlerts ??= (() => {
     const hits = [];
     for (const item of items) {
       const q = quotes[item.key];
-      if (!q || q.price == null || !PSMarkets.isOpen(item.market, now)) continue;
+      if (!q || q.price == null || EXT.includes(q.from) || !PSMarkets.isOpen(item.market, now)) continue;
       const a = prefs.alerts?.[item.key];
       RULES.filter((r) => r.test(q, a, prefs.moveAlert)).forEach((r) => {
         const id = idOf(item.key, r.kind, item.market, now);

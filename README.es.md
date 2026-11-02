@@ -37,6 +37,9 @@ Quería echar un vistazo al mercado durante el trabajo, pero abrir una aplicaci�
 - **Lista de seguimiento**: escribe `2330` o `AAPL` para añadir; detecta automáticamente si cotiza en TWSE, TPEx o EE. UU. Las acciones de EE. UU. muestran el ticker y las de Taiwán el nombre.
 - **Pestañas**: `Todo | Taiwán | EE. UU. | Mundo`, más tus propias pestañas (p. ej. «Tecnología», «Dividendos»). Una acción puede estar en varias pestañas.
 - **Índices mundiales**: 16 índices de Taiwán, EE. UU., China, Hong Kong, Japón, Corea, Singapur, Reino Unido, Francia y Alemania; cada uno se puede activar o desactivar.
+- **Cripto y futuros**: Bitcoin, Ethereum, oro, plata y petróleo, en su propia pestaña «Cripto/Futuros»; cada uno se activa por separado.
+- **Preapertura y tras el cierre en EE. UU.**: en esos horarios tus acciones de EE. UU. (las 20 primeras) muestran el último precio con «Pre» o «Post», calculado desde el último cierre. Estos precios no activan alertas.
+- **Ventana mini ⧉**: pulsa ⧉ y luego «Abrir ventana mini», y las cotizaciones flotan sobre el escritorio, carpetas, Excel y Word, siempre encima. Chrome debe seguir abierto; puedes minimizar la ventana principal, pero no cerrarla.
 - **Colores**: rojo sube, verde baja (convención de Taiwán) o verde sube, rojo baja (convención de EE. UU.).
 - **Idiomas**: 繁中 / English / 日本語 / 简中 / 한국어 / Español; por defecto sigue el idioma de Chrome.
 
@@ -48,6 +51,9 @@ Quería echar un vistazo al mercado durante el trabajo, pero abrir una aplicaci�
 | Acciones de EE. UU., Dow Jones, S&P 500, Nasdaq, Semiconductores PHLX | Yahoo Finance | unos segundos |
 | Shanghái, Shenzhen, CSI 300, Hang Seng, Nikkei, Straits Times, FTSE, CAC, DAX | Yahoo Finance | unos 15 minutos |
 | KOSPI | Yahoo Finance | unos 20 minutos |
+| Preapertura y tras el cierre en EE. UU. | Yahoo Finance | de segundos a 1 minuto (cada 30 s) |
+| Bitcoin, Ethereum | Yahoo Finance | segundos |
+| Oro, plata, petróleo (futuros) | Yahoo Finance | unos 10 minutos |
 
 - Cada fila muestra la **hora del dato**; durante la sesión, los datos con más de 2 minutos se ven en gris.
 - Las acciones de Taiwán a menudo no tienen precio de operación durante la sesión; entonces se muestra la mejor compra (o venta), marcada con «C» o «V».
@@ -97,7 +103,7 @@ Pulsa el botón de pieza de puzle 🧩 de la barra y fija PeekaStock (el icono o
 
 ## 🎬 Uso
 
-1. Pasa el ratón sobre la ventana para ver la barra: **⚙** ajustes, **▁** vista mini, **◐** modo discreto, **👁** ocultar, **↺** restablecer posición, **?** cómo funciona. Arrastra la barra (la cabeza del gato) para mover la ventana.
+1. Pasa el ratón sobre la ventana para ver la barra: **⚙** ajustes, **▁** vista mini, **◐** modo discreto, **👁** ocultar, **↺** restablecer posición, **⧉** ventana mini, **?** cómo funciona. Arrastra la barra (la cabeza del gato) para mover la ventana.
 2. **⚙ Ajustes**:
    - **Lista de seguimiento**: escribe un código y pulsa Añadir; ↑↓ para ordenar, ✕ para quitar
    - **Pestañas propias**: añadir, ✎ renombrar, ↑↓, ✕; en «Añadir a la pestaña» marca las acciones e índices que quieras incluir
@@ -151,6 +157,7 @@ PeekaStock/
 ├── prefs.js              # Ajustes; operaciones de la lista y las pestañas
 ├── overlay.js            # Ventana flotante (Shadow DOM): arrastrar, redimensionar, pestañas, tabla
 ├── panel.js              # Panel de ajustes ⚙
+├── popout.html, popout.js  # Ventana principal de la ventana mini
 ├── alerts.js             # Reglas de alerta: precio, grandes movimientos, una vez al día
 ├── box.js                # Cálculo de posición y tamaño de la ventana
 ├── blank.js              # Detección de doble clic y Esc para ocultar

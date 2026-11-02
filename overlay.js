@@ -15,12 +15,17 @@
   // 擴充功能重新載入後，舊的框會殘留在網頁上且已失效，先清掉
   document.querySelectorAll('peek-stock').forEach((el) => el.remove());
 
+  // 彈出小視窗（popout.html，見 popout.js）：框填滿小視窗，不要工具列、耳朵、縮放把手；設定都在網頁上的框做。
+  // 主人視窗常常被蓋住或縮小，所以不看分頁看不看得見
+  const POP = location.pathname.endsWith('/popout.html');
+  const pageVisible = () => POP || document.visibilityState === 'visible';
+
   const BOX_KEY = 'overlayBox';
   const TICK_MS = 5000;
   const STALE_SEC = 120;   // 盤中資料超過 2 分鐘變灰（CLAUDE.md 2.3）
   const { t } = PSI18n;    // 查翻譯；不要再拿 t 當區域變數名稱（CLAUDE.md 第 4 節坑 3）
-  // MIS 盤中常常沒有成交價，改用買賣價時標出來（i18n 的 tag.bid／tag.ask，提示 tag.bidHint／tag.askHint）
-  const FROM_TAG = { bid: 'bid', ask: 'ask' };
+  // 價格不是正常時段的成交價時標出來：MIS 的買賣價、美股盤前盤後（i18n 的 tag.＋來源，提示 tag.＋來源＋Hint）
+  const FROM_TAG = { bid: 'bid', ask: 'ask', pre: 'pre', post: 'post' };
   // 偷喵配色（和圖示一致）：黑貓的炭黑底＋金色眼睛當強調色。貓的裝飾只在一般外觀出現，隱身模式全部藏起來
   const GOLD = '#FFC23D';
   // 工具列上的小貓頭（圖示裡那隻黑貓）
@@ -51,12 +56,12 @@
     /* 工具列：浮在框上緣的膠囊，滑鼠移到框上才出現；按住拖曳＝移動框。
        從耳朵右邊開始（最寬到框寬減掉耳朵那一段），永遠不會蓋住耳朵；名稱只留貓頭，滑鼠移上看名字 */
     div.bar { position: absolute; top: -20px; right: 12px; z-index: 3; display: flex; flex-wrap: wrap; justify-content: flex-end;
-              align-items: center; gap: 6px; max-width: calc(100% - 104px);
+              align-items: center; gap: 4px; max-width: calc(100% - 104px);
               padding: 3px 4px 3px 8px; border-radius: 999px; background: #333; border: 1px solid #555;
               font: 11px/1 system-ui, sans-serif; color: #bbb; cursor: move; user-select: none;
               opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .15s; }
     div.box:hover div.bar { opacity: 1; transform: none; }
-    div.bar button { width: 24px; height: 24px; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
+    div.bar button { width: 22px; height: 22px; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
                      color: #eee; background: #444; font: 14px/1 system-ui, sans-serif; }
     div.bar button:hover { background: #555; }
     div.bar button.on { background: ${GOLD}; color: #2A1F00; }
@@ -81,9 +86,10 @@
     /* 報價：放不下就在框裡捲動；下方留空間，捲軸才不會被右下角的縮放把手蓋住 */
     div.list { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; margin: 6px 3px 0 0; padding: 0 6px 0 10px;
                scrollbar-width: thin; scrollbar-color: #555 transparent; }
-    table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
-    td { padding: 0 5px; white-space: nowrap; }
-    td.name { max-width: 7em; overflow: hidden; text-overflow: ellipsis; }   /* 美股全名很長（NVIDIA Corporation），截斷，滑鼠移上看全名 */
+    /* font、color 要寫明：小視窗的文件是舊式相容模式，表格不會自動繼承字體大小和顏色 */
+    table { border-collapse: collapse; font: inherit; color: inherit; font-variant-numeric: tabular-nums; }
+    td { padding: 0 4px; white-space: nowrap; }
+    td.name { max-width: 6.5em; overflow: hidden; text-overflow: ellipsis; }   /* 美股全名很長（NVIDIA Corporation），截斷，滑鼠移上看全名 */
     td.num { text-align: right; }
     td.tag { color: #F8B500; padding: 0 2px; }
     td.when { color: #999; }
@@ -124,6 +130,11 @@
     div.box.hiding { opacity: 0; transform: translateY(8px); }
     div.box.hiding div.ears { transform: translateY(14px); }
 
+    /* 彈出小視窗：框填滿視窗 */
+    div.box[data-pop] { inset: 0; width: auto !important; height: auto !important; left: 0 !important; top: 0 !important;
+                        border: 0; border-radius: 0; box-shadow: none; }
+    div.box[data-pop] div.ears, div.box[data-pop] div.bar, div.box[data-pop] div.corner { display: none; }
+
     /* 隱身模式：看起來像網頁本身的灰色小字。漲跌只靠 ▲▼，不分顏色；所有貓的裝飾都藏起來 */
     div.box[data-look=stealth] div.ears, div.box[data-look=stealth] svg.logo { display: none; }
     div.box[data-look=stealth] tr.stale td.when::after, div.box[data-look=stealth] td.empty::before { content: none; }
@@ -143,7 +154,7 @@
   root.innerHTML = `<style>${STYLE}</style>
     <div class="box">
       <div class="ears">${EAR(-1)}${EAR(1)}</div>
-      <div class="bar" title="PeekaStock">${CAT_HEAD}<button data-act="settings" data-i18n-title="bar.settings">⚙</button><button data-act="mini" data-i18n-title="bar.mini">▁</button><button data-act="stealth" data-i18n-title="bar.stealth">◐</button><button data-act="hide" data-i18n-title="bar.hide">👁</button><button data-act="reset" data-i18n-title="bar.reset">↺</button><button data-act="help" data-i18n-title="p.help">?</button></div>
+      <div class="bar" title="PeekaStock">${CAT_HEAD}<button data-act="settings" data-i18n-title="bar.settings">⚙</button><button data-act="mini" data-i18n-title="bar.mini">▁</button><button data-act="stealth" data-i18n-title="bar.stealth">◐</button><button data-act="hide" data-i18n-title="bar.hide">👁</button><button data-act="reset" data-i18n-title="bar.reset">↺</button><button data-act="pop" data-i18n-title="bar.pop">⧉</button><button data-act="help" data-i18n-title="p.help">?</button></div>
       <div class="corner" data-c="nw"></div><div class="corner" data-c="ne"></div>
       <div class="corner" data-c="sw"></div><div class="corner" data-c="se"></div>
       <div class="tabs"></div>
@@ -154,6 +165,7 @@
     </div>
     ${PSPanel.HTML}`;
   const q = (sel) => root.querySelector(sel);
+  if (POP) q('.box').dataset.pop = '';
   const el = q('.box'), bar = q('.bar'), table = q('div.list table'), foot = q('.foot'), tabsBar = q('div.tabs');
   const miniTable = q('div.miniline table');
 
@@ -236,6 +248,7 @@
     // 設定（⚙）和使用說明（?）共用同一個浮動視窗；再按一次同一個按鈕、或按 ✕＝關閉
     settings: () => showPanel('settings'),
     help: () => showPanel('help'),
+    pop: () => send({ to: 'sw', cmd: 'openPop' }),
     close: () => showPanel(null),
     stealth: () => PSPrefs.update({ stealth: !prefs.stealth }),
     mini: () => PSPrefs.update({ mini: !prefs.mini }),
@@ -253,13 +266,13 @@
   // 在網頁空白處點兩下＝藏身／叫出（判斷見 blank.js；設定 prefs.dblHide 可關掉）。藏起來時框還在網頁裡，照樣聽得到
   const hideFromPage = () => (session.hidden ? send({ to: 'sw', cmd: 'toggleHidden' }) : ACTIONS.hide());
   document.addEventListener('dblclick', (e) => {
-    if (!prefs.dblHide || !alive()) return;
+    if (POP || !prefs.dblHide || !alive()) return;
     if (PSBlank.isBlank(e, window.getSelection()?.toString(), host)) hideFromPage();
   });
   // 網頁內按鍵（預設 Esc 連按兩下，設定面板可錄製別的鍵）。面板裡的按鍵不會傳到這裡（panel.js 擋掉了）
   let lastKey = null;
   window.addEventListener('keydown', (e) => {
-    if (PSBlank.isTyping(e) || !alive()) return;
+    if (POP || PSBlank.isTyping(e) || !alive()) return;
     const r = PSBlank.keyFires(e, prefs.hideKey, lastKey, Date.now());
     lastKey = r.last;
     if (r.fire) hideFromPage();
@@ -294,12 +307,12 @@
     return td;
   }
 
-  // 一列：名稱、價格、（買／賣）、漲跌％、資料時間
+  // 一列：名稱、價格、（買價／賣價／盤前／盤後）、漲跌％、資料時間
   function rowView(item, quote, now) {
     const tr = document.createElement('tr');
     const open = PSMarkets.isOpen(item.market, now);
     const lag = quote?.time ? (now - quote.time) / 1000 : null;
-    tr.classList.toggle('stale', open && lag > STALE_SEC);
+    tr.classList.toggle('stale', open && lag > STALE_SEC + (item.delay ?? 0));
     tr.classList.toggle('closed', !open);
     tr.classList.toggle('alerted', (session.alertQueue ?? []).some((a) => a.key === item.key));   // 剛觸發提醒的那一列
     const [label, hint] = PSPrefs.labelOf(item, quote, t);   // 美股顯示代號、台股顯示名稱，另一個放滑鼠提示
@@ -307,7 +320,7 @@
     name.title = [label, hint].filter(Boolean).join(' ');
     const side = FROM_TAG[quote?.from];
     const tag = cell(side ? t(`tag.${side}`) : '', 'tag');
-    if (side) tag.title = t(`tag.${side}Hint`);
+    if (side) tag.title = t(`tag.${side}Hint`, { close: fmtPrice(quote.prev) });
     const when = cell(fmtWhen(quote?.time, now), 'when');
     if (quote?.time) when.title = new Date(quote.time).toLocaleString('sv-SE');   // 完整資料時間
     tr.append(
@@ -327,7 +340,7 @@
   }
 
   // 抓取群組 → 錯誤列上顯示的名稱
-  const GROUP_KEY = { tw: 'sec.tw', us: 'sec.us', idx: 'sec.world' };
+  const GROUP_KEY = { tw: 'sec.tw', us: 'sec.us', idx: 'sec.world', crypto: 'sec.alt', ext: 'sec.us' };
   function footView() {
     const errors = Object.entries(session.status ?? {}).filter(([, s]) => !s.ok).map(([id, s]) => {
       const d = document.createElement('div');
@@ -429,7 +442,7 @@
 
   function showAlerts() {
     const next = (session.alertQueue ?? [])[0];
-    const visible = !session.hidden && document.visibilityState === 'visible';
+    const visible = !session.hidden && pageVisible();
     if (!next || !visible) {
       if (!next) bubble.hidden = true;
       return;
@@ -456,7 +469,7 @@
     if (session.hidden) return;   // 藏身鍵：藏起來時不抓也不畫
     render();   // 就算不抓，也要重畫（資料時間到了要變灰）
     showAlerts();
-    if (document.visibilityState !== 'visible') return;
+    if (!pageVisible()) return;
     send({ to: 'sw', cmd: 'tick' });
   }
 

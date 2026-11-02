@@ -33,6 +33,8 @@ const messageListeners = [];
 const commandListeners = [];
 const actionListeners = [];
 const alarmListeners = [];
+const windowCalls = [];   // 假的 chrome.windows 記下來；popContexts＝目前開著的主人視窗
+let popContexts = [];
 const alarms = {};   // 名稱 → 設定（假的 chrome.alarms 只記下來，測試自己叫 alarmListeners）
 globalThis.chrome = {
   storage: {
@@ -40,7 +42,15 @@ globalThis.chrome = {
     session: fakeArea('session', changeListeners),
     onChanged: { addListener: (cb) => changeListeners.push(cb) },
   },
-  runtime: { onMessage: { addListener: (cb) => messageListeners.push(cb) } },
+  runtime: {
+    onMessage: { addListener: (cb) => messageListeners.push(cb) },
+    getURL: (p) => `chrome-extension://test/${p}`,
+    getContexts: async () => popContexts,
+  },
+  windows: {
+    create: async (o) => { windowCalls.push(['create', o]); },
+    update: async (id, o) => { windowCalls.push(['update', id, o]); },
+  },
   commands: { onCommand: { addListener: (cb) => commandListeners.push(cb) } },
   action: { onClicked: { addListener: (cb) => actionListeners.push(cb) } },
   alarms: {
@@ -63,6 +73,7 @@ function fakeFetch(url) {
     return Promise.resolve(reply({ ...sample('mis.json'), msgArray: [...sample('mis.json').msgArray, ...sample('mis-index.json').msgArray] }));
   }
   if (url.includes('/v7/finance/spark')) return Promise.resolve(reply(sample('yahoo-spark-v7.json')));
+  if (url.includes('/v8/finance/chart')) return Promise.resolve(reply(sample('yahoo-chart.json')));
   return Promise.resolve(reply('<html>?</html>'));
 }
 
@@ -113,7 +124,7 @@ await test('同一句的 {變數} 在六種語言都一樣', () => {
   Object.entries(STRINGS).forEach(([k, row]) => row.forEach((s) => assert.equal(vars(s), vars(row[0]), `${k}：${s}`)));
 });
 await test('畫面和程式裡寫死的 key 都存在（data-i18n、t(\'…\')）', () => {
-  const used = ['overlay.js', 'panel.js'].flatMap((f) => [
+  const used = ['overlay.js', 'panel.js', 'popout.html', 'popout.js'].flatMap((f) => [
     ...src(f).matchAll(/data-i18n(?:-title|-placeholder)?="([^"$]+)"/g), ...src(f).matchAll(/\bt\('([^']+)'/g),
     ...src(f).matchAll(/'(help\.\w+|tag\.\w+)'/g),   // 使用說明（panel.js 的 HELP 表）
   ].map((m) => m[1]));
@@ -128,14 +139,14 @@ await test('組出來的 key 也都存在：指數、地區、分頁、段標題
     ...['tse', 'otc', 'us'].map((x) => `ex.${x}`), ...['up', 'down', 'del', 'ren', 'tup', 'tdown', 'tdel', 'bell', 'asave', 'aclear'].map((x) => `op.${x}`),
     ...PSAlerts.RULES.map((r) => `alert.${r.kind}`),
     ...['tabEmpty', 'tabLong', 'tabDup', 'tabFull', 'format', 'notFound'].map((x) => `msg.${x}`),
-    ...['bid', 'ask'].flatMap((x) => [`tag.${x}`, `tag.${x}Hint`]),
+    ...['bid', 'ask', 'pre', 'post'].flatMap((x) => [`tag.${x}`, `tag.${x}Hint`]),
   ];
   keys.forEach((k) => assert.ok(STRINGS[k], `少了 ${k}`));
 });
 await test('程式碼裡沒有漏掉的中日韓文字（註解以外都要搬進 i18n.js）', () => {
   const CJK = /[　-ヿ㐀-鿿가-힯＀-￯]/;
   const strip = (code) => code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
-  ['overlay.js', 'panel.js', 'markets.js', 'prefs.js', 'sources.js', 'schedule.js', 'box.js', 'sw.js', 'alerts.js', 'blank.js'].forEach((f) => {
+  ['overlay.js', 'panel.js', 'markets.js', 'prefs.js', 'sources.js', 'schedule.js', 'box.js', 'sw.js', 'alerts.js', 'blank.js', 'popout.js'].forEach((f) => {
     const bad = strip(src(f)).split('\n').filter((line) => CJK.test(line));
     assert.deepEqual(bad, [], f);
   });
@@ -233,17 +244,18 @@ await test('刪除與上下搬移；到頂、到底、找不到都不動', () =>
 });
 await test('分段：台股／美股／國際指數，段內指數在前、自選股在後', () => {
   const secs = sections(itemsOf(PSPrefs.DEFAULT));
-  assert.deepEqual(secs.map((s) => s.id), ['tw', 'us', 'world']);
+  assert.deepEqual(secs.map((s) => s.id), ['tw', 'us', 'world', 'alt']);
+  assert.deepEqual(secs[3].items.map((i) => i.symbol), ['BTC-USD', 'ETH-USD', 'GC=F', 'SI=F', 'CL=F']);
   assert.deepEqual(secs[0].items.map((i) => i.key), ['idx:tse_t00', 'idx:otc_o00', 'tw:2330', 'tw:6488']);
   assert.deepEqual(secs[1].items.slice(-2).map((i) => i.key), ['us:AAPL', 'us:NVDA']);
-  assert.ok(secs[2].items.every((i) => i.key.startsWith('idx:') && !['tw', 'us'].includes(i.market)));
+  assert.ok(secs[2].items.every((i) => i.key.startsWith('idx:') && !['tw', 'us', 'crypto', 'fut'].includes(i.market)));
 });
 await test('空的段不出現（美國指數全關、也沒有自選美股）', () => {
   const p = PSPrefs.merge({
     watchlist: [W('2330')],
     indices: Object.fromEntries(INDICES.filter((i) => i.market === 'us').map((i) => [i.symbol, false])),
   });
-  assert.deepEqual(sections(itemsOf(p)).map((s) => s.id), ['tw', 'world']);
+  assert.deepEqual(sections(itemsOf(p)).map((s) => s.id), ['tw', 'world', 'alt']);
 });
 await test('新增時查到的名稱當作備用名稱（還沒抓到報價時顯示）', () => {
   const p = PSPrefs.merge({ watchlist: [{ market: 'tw', code: '2603', ex: 'tse', name: '長榮' }] });
@@ -262,12 +274,12 @@ await test('美股顯示代號（全名放提示）、台股顯示名稱（代�
 });
 await test('內建分頁：全部／台股／美股／國際；沒東西的內建分頁不顯示，自創分頁就算空的也顯示', () => {
   const list = itemsOf(PSPrefs.DEFAULT);
-  assert.deepEqual(visibleTabs(PSPrefs.DEFAULT, list).map((x) => x.id), ['all', 'tw', 'us', 'world']);
+  assert.deepEqual(visibleTabs(PSPrefs.DEFAULT, list).map((x) => x.id), ['all', 'tw', 'us', 'world', 'alt']);
   const p = PSPrefs.merge({
     watchlist: [W('2330')], tabs: [{ id: 't1', name: '空的', keys: [] }],
     indices: Object.fromEntries(INDICES.filter((i) => i.market === 'us').map((i) => [i.symbol, false])),
   });
-  assert.deepEqual(visibleTabs(p, itemsOf(p)).map((x) => x.id), ['all', 'tw', 'world', 't1']);
+  assert.deepEqual(visibleTabs(p, itemsOf(p)).map((x) => x.id), ['all', 'tw', 'world', 'alt', 't1']);
 });
 await test('分頁內容：台股分頁只有台股、國際分頁沒有台美、自創分頁照 keys（可跨市場）', () => {
   const p = PSPrefs.merge({ tabs: [{ id: 't1', name: '科技', keys: ['us:NVDA', 'tw:2330', 'idx:^SOX'] }] });
@@ -579,9 +591,75 @@ await test('視窗變小時框跟著縮，存檔的大小不變；視窗變大�
   assert.deepEqual(fitted(saved, VIEW), saved);
 });
 
+console.log('\n加密貨幣、期貨、美股盤前盤後');
+// 2026-11-02 是週一，美東已是冬令時間（UTC-5）
+const NOV = (d, h, m = 0) => Date.UTC(2026, 10, d, h, m);
+await test('加密貨幣週末也開著；期貨週六休市、週日 18:00（美東）開、每天 17:00～18:00 休息', () => {
+  assert.equal(isOpen('crypto', AT.saturday), true);
+  assert.equal(isOpen('fut', AT.saturday), false);
+  assert.equal(isOpen('fut', NOV(1, 22, 59)), false);   // 週日 17:59
+  assert.equal(isOpen('fut', NOV(1, 23, 0)), true);     // 週日 18:00
+  assert.equal(isOpen('fut', NOV(2, 22, 30)), false);   // 週一 17:30
+  assert.equal(isOpen('fut', NOV(2, 23, 30)), true);    // 週一 18:30
+  assert.equal(isOpen('fut', NOV(6, 22, 0)), false);    // 週五 17:00
+});
+await test('美股延長交易時段：盤前 04:00～09:30、盤後 16:00～20:00（美東），週末沒有', () => {
+  const { extSession } = PSMarkets;
+  assert.equal(extSession('us', NOV(2, 12, 30)), 'pre');
+  assert.equal(extSession('us', NOV(2, 15)), null);
+  assert.equal(extSession('us', NOV(2, 22)), 'post');
+  assert.equal(extSession('us', NOV(3, 2)), null);      // 週一 21:00
+  assert.equal(extSession('us', AT.saturday), null);
+  assert.equal(extSession('tw', NOV(2, 12, 30)), null);
+});
+await test('Yahoo 的期貨固定晚 10 分鐘：變灰的門檻要放寬；加密貨幣不用', () => {
+  const of = (sym) => INDICES.find((i) => i.symbol === sym);
+  assert.equal(of('GC=F').delay, 600);
+  assert.equal(of('BTC-USD').delay, 0);
+  assert.equal(of('BTC-USD').group, 'crypto');
+});
+const { parseChart } = PSSources;
+const CHART = sample('yahoo-chart.json');
+const AAPL = { key: 'us:AAPL', market: 'us', symbol: 'AAPL', code: 'AAPL' };
+await test('盤前解析（真實樣本）：最新價、標 pre、漲跌從上次收盤算（不是 previousClose）', () => {
+  const q = parseChart(CHART, 1, AAPL);
+  assert.deepEqual([q.price, q.prev, q.from, q.name], [344.42, 344.63, 'pre', 'Apple Inc.']);
+  assert.ok(Math.abs(q.pct - ((344.42 - 344.63) / 344.63) * 100) < 1e-9);
+  assert.equal(q.time, 1793622770000);
+});
+await test('尾端價格是空的 → 往前找最後一筆；全空或不在盤前盤後 → 不回報價', () => {
+  const edited = (fn) => { const j = structuredClone(CHART); fn(j.chart.result[0]); return j; };
+  const tail = edited((r) => { r.indicators.quote[0].close[3] = null; });
+  assert.equal(parseChart(tail, 1, AAPL).price, 344.5);
+  assert.equal(parseChart(edited((r) => { r.indicators.quote[0].close = [null, null, null, null]; }), 1, AAPL), null);
+  const regular = edited((r) => { r.timestamp = r.timestamp.map(() => r.meta.currentTradingPeriod.regular.start + 60); });
+  assert.equal(parseChart(regular, 1, AAPL), null);
+  assert.equal(parseChart({}, 1, AAPL), null);
+});
+await test('盤前來源：每檔一個請求、帶 _、最多 20 檔；一檔失敗不影響其他，全失敗才算壞', async () => {
+  const list = Array.from({ length: 25 }, (_, i) => ({ ...AAPL, key: `us:S${i}`, symbol: `S${i}` }));
+  const urls = [];
+  const got = await SOURCES.ext(list, (url) => { urls.push(url); return Promise.resolve(reply(CHART)); });
+  assert.equal(urls.length, PSSources.EXT_MAX);
+  assert.ok(urls.every((u) => /[?&]_=\d+/.test(u)));
+  assert.equal(got.length, PSSources.EXT_MAX);
+  const some = await SOURCES.ext(list.slice(0, 2), (url) => Promise.resolve(url.includes('/S0?') ? reply({}, 404) : reply(CHART)));
+  assert.deepEqual(some.map((q) => q.key), ['us:S1']);
+  await assert.rejects(SOURCES.ext(list.slice(0, 2), () => Promise.resolve(reply({}, 429))), (e) => e.code === 'http');
+});
+await test('盤前盤後的價格不觸發提醒', () => {
+  const p = alertPrefs({ alerts: { 'tw:2330': { above: 1 } } });
+  const at = (from) => PSAlerts.check([stock], { 'tw:2330': { price: 2, pct: 9, from } }, p, {}, AT.twOpen).length;
+  assert.equal(at('pre'), 0);
+  assert.equal(at('post'), 0);
+  assert.ok(at('trade') > 0);
+});
+
 console.log('\n背景程式（tick → 抓取 → storage.session）');
 globalThis.fetch = fakeFetch;
 load('sw.js');
+const realExt = PSMarkets.extSession;
+PSMarkets.extSession = () => null;   // 下面的測試不要受「現在幾點」影響；需要時各自打開
 const session = chrome.storage.session.data;
 const tickOnce = async () => {
   messageListeners.forEach((cb) => cb({ to: 'sw', cmd: 'tick' }));
@@ -592,7 +670,7 @@ await test('第一次 tick：三個群組都抓，報價寫進 storage.session',
   await tickOnce();
   ['tw:2330', 'tw:6488', 'us:AAPL', 'us:NVDA', 'idx:tse_t00', 'idx:^N225', 'idx:^GDAXI'].forEach((k) =>
     assert.ok(session.quotes?.[k]?.price > 0, k));
-  assert.deepEqual(Object.keys(session.status).sort(), ['idx', 'tw', 'us']);
+  assert.deepEqual(Object.keys(session.status).sort(), ['crypto', 'idx', 'tw', 'us']);
   assert.ok(Object.values(session.status).every((s) => s.ok));
   assert.equal(calls.filter((u) => u.includes('mis.twse')).length, 1);
 });
@@ -640,6 +718,25 @@ await test('藏起來時 tick 不發任何請求；叫出來後照常抓', async
   await chrome.storage.session.set({ hidden: false });
   await tickOnce();
   assert.ok(calls.length > 0);
+});
+await test('⧉：沒開就開主人視窗；已經開著就叫到前面，不開第二個', async () => {
+  windowCalls.length = 0;
+  messageListeners.forEach((cb) => cb({ to: 'sw', cmd: 'openPop' }));
+  await sleep(20);
+  assert.equal(windowCalls.length, 1);
+  assert.equal(windowCalls[0][0], 'create');
+  assert.equal(windowCalls[0][1].url, 'chrome-extension://test/popout.html');
+  assert.equal(windowCalls[0][1].type, 'popup');
+  popContexts = [{ windowId: 7 }];
+  messageListeners.forEach((cb) => cb({ to: 'sw', cmd: 'openPop' }));
+  await sleep(20);
+  popContexts = [];
+  assert.deepEqual(windowCalls[1], ['update', 7, { focused: true }]);
+});
+await test('manifest：小視窗要 Chrome 116；不必多要權限', () => {
+  const m = JSON.parse(src('manifest.json'));
+  assert.equal(m.minimum_chrome_version, '116');
+  assert.deepEqual(m.permissions, ['storage', 'alarms']);
 });
 // 送一個要回覆的訊息給背景程式，等它回覆
 const ask = (m) => new Promise((resolve) => messageListeners.forEach((cb) => cb({ to: 'sw', ...m }, {}, resolve)));
@@ -697,6 +794,22 @@ await test('提醒：抓到報價後放進佇列，只放一次；框顯示完�
   await sleep(20);
   assert.deepEqual(session.alertQueue, []);
 });
+await test('盤前時段：只多抓自選美股（指數不抓），價格標 pre；時段外不發這種請求', async () => {
+  await chrome.storage.session.set({ hidden: false });
+  await chrome.storage.local.set({ prefs: PSPrefs.merge({}) });
+  PSMarkets.extSession = () => 'pre';
+  Object.keys(state).forEach((k) => { state[k].last = 0; });
+  calls.length = 0;
+  await tickOnce();
+  PSMarkets.extSession = () => null;
+  const charts = calls.filter((u) => u.includes('/v8/finance/chart'));
+  assert.deepEqual(charts.map((u) => u.match(/chart\/(\w+)/)[1]).sort(), ['AAPL', 'NVDA']);
+  assert.equal(session.quotes['us:AAPL'].from, 'pre');
+  Object.keys(state).forEach((k) => { state[k].last = 0; });
+  calls.length = 0;
+  await tickOnce();
+  assert.equal(calls.filter((u) => u.includes('/v8/finance/chart')).length, 0);
+});
 await test('背景提醒：打開才設鬧鐘；鬧鐘響時框藏著也抓，但只抓有設提醒的', async () => {
   assert.equal(alarms.bgAlert, undefined);
   await PSPrefs.update({ bgAlert: true });
@@ -705,12 +818,15 @@ await test('背景提醒：打開才設鬧鐘；鬧鐘響時框藏著也抓，�
   const realOpen = PSMarkets.isOpen;
   PSMarkets.isOpen = () => true;
   await chrome.storage.session.set({ hidden: true });
+  await PSPrefs.update({ alerts: { 'us:AAPL': { above: 1 } }, moveAlert: { on: false, pct: 3 } });
+  PSMarkets.extSession = () => 'pre';   // 背景提醒不抓盤前盤後
   Object.keys(state).forEach((k) => { state[k].last = 0; });
   delete session.quotes;
   calls.length = 0;
   alarmListeners.forEach((cb) => cb({ name: 'bgAlert' }));
   for (let i = 0; i < 50 && running; i += 1) await sleep(10);
   PSMarkets.isOpen = realOpen;
+  PSMarkets.extSession = realExt;
   assert.equal(calls.length, 1);
   assert.ok(calls[0].includes('/v7/finance/spark') && calls[0].includes('AAPL') && !calls[0].includes('NVDA'), calls[0]);
   await PSPrefs.update({ bgAlert: false });

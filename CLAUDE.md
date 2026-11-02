@@ -123,15 +123,16 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 | `manifest.json` | MV3 v0.7.0；`icons`／`action.default_icon`；說明、圖示提示、快捷鍵說明用 `__MSG_…__`（`default_locale: en`）；權限 `storage`、`alarms`（背景提醒）；`commands`（toggle-hide）、`action`（點圖示＝隱藏／顯示）；`host_permissions` 只有 MIS 和 `query1.finance.yahoo.com`；content script 比對 `<all_urls>`，載入順序 i18n → markets → prefs → box → blank → panel → overlay |
 | `_locales/*/messages.json` | manifest 的六語文字（en、zh_TW、zh_CN、ja、ko、es）：`extDescription`、`actionTitle`、`cmdToggleHide` |
 | `i18n.js` | `PSI18n`（架構沿用 FreeLiveSub）：每個 key 一行、6 欄（zh-Hant、en、zh-Hans、ja、ko、es）；`t(key, vars)`、`apply(root)`（`data-i18n`／`data-i18n-title`／`data-i18n-placeholder`）、`resolve('auto')` 依瀏覽器語言。指數名稱 `idx.＋代號`、地區 `mkt.＋市場`、錯誤 `err.＋代碼` |
-| `markets.js` | `PSMarkets`：市場表（時區、交易時段）、指數表 `INDICES`（市場、抓取群組、代號、`nameKey`）、`isOpen()` |
+| `markets.js` | `PSMarkets`：市場表（時區、交易時段）、指數表 `INDICES`（市場、抓取群組、代號、`nameKey`、`delay`）、`isOpen()`（`byDay`＝不是週一到週五的市場：加密貨幣 24 小時、CME 期貨）、`extSession()`（美股盤前盤後） |
 | `prefs.js` | `PSPrefs`：預設自選（2330、6488、AAPL、NVDA）、指數開關、隱身、目前分頁 `tab`、自創分頁 `tabs`、介面語言 `uiLang`（auto）、漲跌顏色 `upColor`（red）、迷你模式 `mini`、到價提醒 `alerts`（`{ key: { above?, below? } }`）、大漲大跌 `moveAlert`（`{ on: true, pct: 3 }`）、背景提醒 `bgAlert`（false）；load／update／watch／merge；純函式：`items()`（設定 → 項目）、`sections()`（台股／美股／國際指數分段）、`labelOf()`（美股顯示代號、台股顯示名稱）、`classify()`（代號屬於哪個市場）、`addWatch`／`removeWatch`／`moveWatch`、分頁 `visibleTabs`／`currentTab`／`tabError`／`addTab`／`renameTab`／`removeTab`／`moveTab`／`setInTab`／`forgetKey`；自選上限 100、自創分頁上限 10、名稱 8 字 |
-| `sources.js` | `PSSources`：`mis()`、`spark()` 與各自的解析函式；`LOOKUP`（新增自選時查代號：台股一次問 tse_／otc_）；錯誤一律帶代碼 `{ code: http／notJson／mis／timeout／other, src, detail }`，框依介面語言翻成文字 |
+| `sources.js` | `PSSources`：`mis()`、`spark()`、`ext()`（美股盤前盤後，v8 chart，每檔一請求、最多 20 檔、一檔失敗不影響其他）與各自的解析函式；`LOOKUP`（新增自選時查代號：台股一次問 tse_／otc_）；錯誤一律帶代碼 `{ code: http／notJson／mis／timeout／other, src, detail }`，框依介面語言翻成文字 |
 | `schedule.js` | `PSSchedule.due()`：純函式，決定這次 tick 要抓哪些群組、哪些項目；退避 |
 | `sw.js` | 背景程式：收 tick → 排程 → 抓取 → 寫 `storage.session` 的 `quotes`／`status`／`misLag`；藏身鍵 `toggleHidden()`（`hidden`）；抓完檢查提醒 → `alertQueue`（最多 20 個）／`alertFired`（今天響過的），框顯示完送 `dismissAlert`；背景提醒打開時 `chrome.alarms` 每 1 分鐘只抓 `PSAlerts.watched()`（框藏著也抓）；`lookup` 指令（要回覆的指令放 `REPLIES`）；開放 session 給 content script 讀 |
 | `alerts.js` | `PSAlerts`：提醒規則表 `RULES`（above／below／up／down）、`check()`（只看盤中，提醒 id＝`key|kind|交易所當地日期`，一天一次）、`watched()`、`prune()`；只有 sw.js 載入 |
 | `blank.js` | `PSBlank`：網頁裡的藏身觸發。`isBlank()`＝空白處點兩下（沒選到字、不在輸入框／連結／影片／畫布等 `SKIP` 元素、不是網頁自己處理掉的、不在框裡；`prefs.dblHide`，預設開）；`keyFires()`／`isTyping()`／`keyLabel()`／`recorded()`＝網頁內按鍵（`prefs.hideKey`，預設 Esc 連按兩下、0.4 秒內，設定面板可錄製別的鍵；輸入框裡按的、按住不放、網頁處理掉的不算） |
 | `box.js` | `PSBox`：懸浮框位置大小的純函式（搬自 FreeLiveSub，可在 Node 測） |
 | `overlay.js` | 懸浮框（Shadow DOM）：拖曳、四角縮放、全螢幕、位置存 `overlayBox` 並在所有分頁同步；工具列 ⚙ 設定、◐ 隱身、👁 隱藏、↺ 重設；框上方分頁列（全部／台股／美股／國際＋自創分頁）；分頁裡有多個市場時分段加標題；分頁看得見時每 5 秒送 tick；E1 貓耳朵、貓掌提醒泡泡（一次一個，8 秒或點掉；隱身時只標亮那一列 `tr.alerted`） |
+| `popout.html`、`popout.js` | 彈出小視窗的主人視窗：載入和網頁一樣的程式畫出框，按「開小視窗」開 Chrome 的文件子母畫面，把框（`peek-stock`）整個搬進去；小視窗關了搬回來。`hidden` 變 true（藏身鍵、點圖示）就關掉小視窗；主人視窗關掉小視窗也跟著關 |
 | `panel.js` | `PSPanel`：⚙ 設定面板（自選股新增／刪除／排序／🔔 到價提醒（就地展開上下限）、自創分頁新增／改名／排序／刪除／勾選內容、指數開關、提醒：大漲大跌 ±%（0.5～20）與背景提醒、顯示：介面語言與漲跌顏色），放在框的下、上、左、右第一個放得下的位置 |
 | `tools/probe.mjs` | v0.1 資料來源實測；結果存 `tools/probe-results/`、原始回應存 `tools/samples/`（兩者都不上傳） |
 | `tools/test.mjs` | `node tools/test.mjs`：測試 |
@@ -187,11 +188,11 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 
 | 功能 | 資料來源（v0.1 已確認欄位存在） | 評估 |
 |---|---|---|
-| 美股盤前／盤後價 | Yahoo quote `preMarketPrice`／`postMarketPrice`（要 crumb） | ⭐ 台灣上班時間正好是美股盤前盤後 |
+| 美股盤前／盤後價 | Yahoo v8 chart（不用 crumb） | ✅ 2026-11-02 做了，見 7.4 |
 | 市場狀態標籤（盤前／盤中／盤後／休市） | 市場表，或 Yahoo quote `marketState` | ⭐ 成本幾乎為零 |
 | 漲停／跌停標示 | MIS `u`／`w` | ⭐ 台股特有 |
 | 迷你走勢線 | Yahoo spark 本來就回傳當日 5 分鐘資料 | 不是 K 線圖，只是一條細線 |
-| 期貨、匯率（`ES=F`、`NQ=F`、`TWD=X`） | Yahoo，指數表加一行 | 期貨延遲 10 分鐘（7.1），要標示 |
+| 期貨、加密貨幣、匯率 | Yahoo，指數表加一行 | ✅ 2026-11-02 做了 BTC、ETH、黃金、白銀、原油（7.4）；`ES=F`、`NQ=F`、`TWD=X` 還沒加 |
 | 到價提醒 | 已有的報價 | ✅ v0.7 做了（框裡的貓掌泡泡＋可選的背景提醒，不用 `chrome.notifications`），見第 6 節 |
 | 五檔買賣 | MIS `a`／`b`／`f`／`g` | 之後再說：框太小，可做成點開的細節 |
 | 自選分組 | 只是設定 | v0.5 自選清單穩定後 |
@@ -356,6 +357,21 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 
 **v0.1 全部市場都量完了**。延遲總結：台股（MIS）3 秒～2 分鐘；美股與美國指數 1～9 秒；陸、港、日、星、英、法、德指數約 15 分；韓國與 Yahoo 的台灣指數約 20 分；美股期貨 10 分。
 
+### 7.4 第四次：2026-11-02 21:29（日本時間；美股盤前，美東 07:29，美國已是冬令時間）
+
+- ✅ **v8 chart 加 `includePrePost=true` 拿得到盤前價，不用 crumb**，一次一檔：AAPL、NVDA、SPCH 每 20 秒抽樣 4 次，最後一筆只晚 **2～20 秒**；TSLA 第一次 120 秒，之後 2～4 秒。沒有成交時會停在上一筆（AAPL 一度 77 秒），這是成交量少，不是來源延遲
+- ⚠ **`previousClose` 是前一個交易日再前一天的收盤**（AAPL 348.91），上次收盤要用 `regularMarketPrice`（344.63）：盤前盤後的漲跌基準用後者
+- spark 抓得到 `BTC-USD`、`ETH-USD`（約 5 秒）、`GC=F`、`SI=F`、`CL=F`（約 600 秒，Yahoo 期貨固定延遲 10 分鐘）
+- 盤前時段：美東 04:00～09:30；盤後：16:00～20:00。冬令時間的日本時間是 18:00～23:30、06:00～10:00
+
+### 7.5 彈出小視窗實驗：2026-11-02（使用者在 Chrome 跑 `tools/pip-test`，測完已刪）
+
+- ✅ 擴充功能自己的頁面（`chrome.windows.create` 開的 popup）能用 `documentPictureInPicture.requestWindow()`：小視窗浮在桌面和 Excel 上，永遠在最上層
+- ✅ 主人視窗被 Excel 蓋住（`hidden`）或縮到工作列時，小視窗還在，計時器最大間隔 1 秒，`sendMessage`→背景程式→`storage.session`→畫面整條路都照常更新
+- 限制（Chrome 規定）：要有人親手按才開得起來；上方標題列拿不掉，會顯示擴充功能名稱；位置不能由程式指定；主人視窗關掉就跟著關
+- ⚠ 小視窗的文件是舊式相容模式（`BackCompat`）：`table` 不繼承字體大小和顏色，CSS 要寫 `font: inherit; color: inherit`
+- 內建瀏覽器的預覽窗開不了（`Internal error: no window`），版面用同大小的 iframe 模擬
+
 ### 7.3 目前結論：正式版用哪個端點
 
 | 項目 | 建議 | 理由 |
@@ -384,3 +400,7 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 - 2026-10-30：使用者想把 Alt+Shift+H 改成 Esc。Chrome 的擴充功能快捷鍵一定要有 Ctrl 或 Alt，不能只用 Esc → 使用者選方案 B：框自己在網頁上聽按鍵（`prefs.hideKey`，預設「Esc 連按兩下」避免和關對話框、離開全螢幕撞到），設定面板「顯示 → 按鍵」可開關、錄製別的鍵、切換連按兩下；游標在網址列時無效（Alt+Shift+H 照樣保留，到 chrome://extensions/shortcuts 可改）。測試頁實測：單按 Esc 不動、連按兩下會藏、錄製 Ctrl+Alt+K 正確
 - 2026-10-30 實測 YouTube 錯誤紀錄：`overlay.js` 存框位置那行報錯（擴充功能重新載入後、網頁沒重新整理，舊的框被拖動 → 舊程式去存位置 → Extension context invalidated）。修正：`alive()`（`chrome.runtime.id` 不見了＝失效）統一檢查：框和面板的所有操作在 Shadow DOM 捕捉階段先檢查，失效就把舊框拿掉、不再呼叫 chrome；存位置、tick、點兩下、按鍵也都先檢查。測試頁模擬失效後按 ◐：框消失、沒有錯誤
 - 2026-10-30：設定「按鍵」改名「藏身快捷鍵」、「錄製」改「設定」（使用者看不懂「錄製」）；長說明拿掉，改成工具列最右邊的 **?**（使用說明）：和 ⚙ 共用 panel.js 的浮動視窗（`show(view)`：settings／help／null），內容是 `HELP` 表（藏身方法、按鍵範圍、隱身模式、迷你、移動縮放、提醒、💤、買賣標記、延遲），每項一個 i18n key `help.*`
+- 2026-11-02：加入加密貨幣（BTC、ETH，每 5 秒）與期貨（黃金、白銀、原油，每 30 秒，延遲 10 分鐘，變灰門檻依 `delay` 放寬），新增「加密／期貨」分頁與分段；預設全開，舊設定讀進來也會出現
+- 2026-11-02：加入美股盤前盤後（`ext` 群組：只抓自選美股前 20 檔、只在延長交易時段、每 30 秒；背景提醒不抓；**不觸發提醒**；價格欄換最新價，漲跌從上次收盤算）
+- 2026-11-02：價格標記改完整文字：買價／賣價／盤前／盤後。繁中、簡中、英文完整；日文 買値／売値／寄前／引後；韓文 매수／매도／장전／장후、西文 C／V／Pre／Post（太長會橫向捲動）。名稱欄上限 7em → 6.5em、儲存格左右 5px → 4px，預設寬 320 六語都放得下
+- 2026-11-02：使用者要框能拉到桌面、資料夾、Office 上。擴充功能畫不到網頁外面 → 用 Chrome 的文件子母畫面（工具列 ⧉ → 主人視窗 → 按「開小視窗」），實驗見 7.5。主人視窗用擴充功能自己的頁面，不用一般分頁（一般分頁換網頁小視窗就關）。小視窗裡不放工具列和設定，設定在網頁上的框做；開著時照常抓報價（主人視窗的 tick 不看分頁看不看得見），藏身鍵、點圖示會關掉它。不選：另寫 Windows 桌面程式（要另外安裝，是另一個專案）

@@ -17,19 +17,26 @@ globalThis.PSI18n ??= (() => {
     'bar.mini': ['迷你偷看：只顯示一行，每 4 秒換一檔', 'Mini peek: one line, next quote every 4 s', '迷你偷看：只显示一行，每 4 秒换一只', 'ミニ表示：1 行だけ、4 秒ごとに次の銘柄', '미니 보기: 한 줄만, 4초마다 다음 종목', 'Vista mini: una línea, cambia cada 4 s'],
     'ov.empty': ['偷喵還沒有東西可以看，按 ⚙ 新增自選股或打開指數', 'Nothing to peek at yet. Use ⚙ to add stocks or turn on indices', '偷喵还没有东西可以看，按 ⚙ 添加自选股或打开指数', 'まだ見るものがありません。⚙ で銘柄を追加するか指数をオンに', '아직 볼 것이 없어요. ⚙에서 종목을 추가하거나 지수를 켜세요', 'Aún no hay nada que mirar. Usa ⚙ para añadir acciones o activar índices'],
     'bar.reset':['重設位置和大小', 'Reset position and size', '重置位置和大小', '位置とサイズをリセット', '위치와 크기 초기화', 'Restablecer posición y tamaño'],
+    'bar.pop': ['彈出小視窗（可浮在桌面、Excel 上）', 'Pop out a mini window (floats over the desktop and Excel)', '弹出小窗口（可浮在桌面、Excel 上）', 'ミニウィンドウで表示（デスクトップや Excel の上に浮かびます）', '미니 창으로 띄우기(바탕 화면, Excel 위에 표시)', 'Abrir ventana mini (flota sobre el escritorio y Excel)'],
 
     // ---------- 分頁、段標題 ----------
     'tab.all': ['全部', 'All', '全部', 'すべて', '전체', 'Todo'],
     'tab.tw': ['台股', 'Taiwan', '台股', '台湾', '대만', 'Taiwán'],
     'tab.us': ['美股', 'US', '美股', '米国', '미국', 'EE. UU.'],
     'tab.world': ['國際', 'World', '国际', '海外', '해외', 'Mundo'],
+    'tab.alt': ['加密／期貨', 'Crypto/Futures', '加密／期货', '暗号／先物', '코인/선물', 'Cripto/Futuros'],
     'sec.tw': ['台股', 'Taiwan', '台股', '台湾株', '대만 주식', 'Taiwán'],
     'sec.us': ['美股', 'US', '美股', '米国株', '미국 주식', 'EE. UU.'],
     'sec.world': ['國際指數', 'World indices', '国际指数', '海外指数', '해외 지수', 'Índices mundiales'],
+    'sec.alt': ['加密貨幣／期貨', 'Crypto & futures', '加密货币／期货', '暗号資産・先物', '코인·선물', 'Cripto y futuros'],
 
     // ---------- 報價列 ----------
-    'tag.bid': ['買', 'Bid', '买', '買', '매수', 'C'],
-    'tag.ask': ['賣', 'Ask', '卖', '売', '매도', 'V'],
+    'tag.bid': ['買價', 'Bid', '买价', '買値', '매수', 'C'],
+    'tag.ask': ['賣價', 'Ask', '卖价', '売値', '매도', 'V'],
+    'tag.pre': ['盤前', 'Pre', '盘前', '寄前', '장전', 'Pre'],
+    'tag.post': ['盤後', 'Post', '盘后', '引後', '장후', 'Post'],
+    'tag.preHint': ['美股盤前價，上次收盤 {close}', 'Pre-market price; last close {close}', '美股盘前价，上次收盘 {close}', 'プレマーケット価格、前回終値 {close}', '프리마켓 가격, 직전 종가 {close}', 'Precio preapertura; último cierre {close}'],
+    'tag.postHint': ['美股盤後價，收盤 {close}', 'After-hours price; close {close}', '美股盘后价，收盘 {close}', 'アフターマーケット価格、終値 {close}', '애프터마켓 가격, 종가 {close}', 'Precio tras el cierre; cierre {close}'],
     'tag.bidHint': ['盤中沒有成交價，顯示最佳買價', 'No trade price yet; showing the best bid', '盘中没有成交价，显示最佳买价', '約定値がないため最良買い気配を表示', '체결가가 없어 최우선 매수호가를 표시', 'Sin precio de operación; se muestra la mejor compra'],
     'tag.askHint': ['盤中沒有成交價，顯示最佳賣價', 'No trade price yet; showing the best ask', '盘中没有成交价，显示最佳卖价', '約定値がないため最良売り気配を表示', '체결가가 없어 최우선 매도호가를 표시', 'Sin precio de operación; se muestra la mejor venta'],
 
@@ -71,9 +78,13 @@ globalThis.PSI18n ??= (() => {
     'help.move': ['拖工具列移動框、拖四個角縮放；↺ 回到右下角。位置所有分頁共用', 'Drag the toolbar to move, drag a corner to resize; ↺ puts it back bottom-right. All tabs share the position', '拖工具栏移动框、拖四个角缩放；↺ 回到右下角。位置所有标签页共用', 'ツールバーをドラッグで移動、四隅でサイズ変更。↺ で右下に戻ります。位置は全タブ共通', '툴바를 드래그해 이동, 네 모서리로 크기 조절. ↺ 는 오른쪽 아래로 복귀. 위치는 모든 탭 공통', 'Arrastra la barra para mover y una esquina para redimensionar; ↺ la devuelve abajo a la derecha. Todas las pestañas comparten la posición'],
     'help.alerts': ['提醒：在 ⚙ 自選股那一列按 🔔 設到價；大漲大跌預設 ±3%。觸發時框裡跳出貓掌泡泡', 'Alerts: tap 🔔 on a watchlist row in ⚙ to set a price; big moves default to ±3%. A paw bubble pops up in the box', '提醒：在 ⚙ 自选股那一行按 🔔 设到价；大涨大跌默认 ±3%。触发时框里弹出猫掌气泡', 'アラート：⚙ のウォッチリストの 🔔 で価格を設定。急騰・急落は初期値 ±3%。枠の中に肉球の吹き出しが出ます', '알림: ⚙ 관심종목 줄의 🔔 로 가격 설정. 급등락은 기본 ±3%. 창 안에 고양이 발바닥 말풍선이 뜹니다', 'Alertas: pulsa 🔔 en la fila de ⚙ para fijar un precio; grandes movimientos ±3% por defecto. Aparece un bocadillo en la ventana'],
     'help.stale': ['資料超過 2 分鐘沒更新（休市或來源延遲），整列變灰', 'No update for over 2 minutes (market closed or source delay); the row turns gray', '数据超过 2 分钟没更新（休市或来源延迟），整行变灰', '2 分以上更新なし（休場またはデータ遅延）。行がグレーになります', '2분 넘게 업데이트 없음(휴장 또는 데이터 지연). 줄이 회색이 됩니다', 'Sin actualizar desde hace más de 2 minutos (mercado cerrado o retraso); la fila se vuelve gris'],
-    'help.tag': ['盤中沒有成交價時，暫時用最佳買價（買）或賣價（賣）', 'When there is no trade price yet, the best bid (B) or ask (A) is shown instead', '盘中没有成交价时，暂时用最佳买价（买）或卖价（卖）', '約定値がないときは、最良買気配（買）または売気配（売）を表示', '체결가가 없을 때는 최우선 매수호가(매수) 또는 매도호가(매도)를 표시', 'Si aún no hay precio de operación, se muestra la mejor compra (C) o venta (V)'],
-    'help.delay': ['台股、美股幾乎即時；其他國家指數延遲約 15～20 分鐘（免費資料的限制）', 'Taiwan and US quotes are near real time; other indices are delayed about 15–20 minutes (free data)', '台股、美股几乎实时；其他国家指数延迟约 15～20 分钟（免费数据的限制）', '台湾株・米国株はほぼリアルタイム。他の国の指数は約 15～20 分遅れ（無料データの制約）', '대만·미국 주식은 거의 실시간, 다른 나라 지수는 약 15~20분 지연(무료 데이터의 한계)', 'Taiwán y EE. UU. casi en tiempo real; los demás índices van unos 15–20 minutos atrasados (datos gratuitos)'],
+    'help.tag': ['買價／賣價：盤中沒有成交價時的最佳買賣價。盤前／盤後：美股延長交易的價格，漲跌從上次收盤算，不觸發提醒', 'Bid/Ask: best bid or ask when there is no trade price yet. Pre/Post: US extended-hours price, measured from the last close; it does not trigger alerts', '买价／卖价：盘中没有成交价时的最佳买卖价。盘前／盘后：美股延长交易的价格，涨跌从上次收盘算，不触发提醒', '買値／売値：約定値がないときの最良気配。寄前／引後：米国株の時間外価格で、騰落は前回終値から計算。アラートは出ません', '매수/매도: 체결가가 없을 때의 최우선 호가. 장전/장후: 미국 주식 시간외 가격으로, 등락은 직전 종가 기준이며 알림은 울리지 않습니다', 'C/V: mejor compra o venta si aún no hay operación. Pre/Post: precio fuera de horario en EE. UU., calculado desde el último cierre; no activa alertas'],
+    'help.delay': ['台股、美股、加密貨幣幾乎即時；期貨延遲約 10 分鐘，其他國家指數約 15～20 分鐘（免費資料的限制）', 'Taiwan, US and crypto quotes are near real time; futures lag about 10 minutes and other indices about 15–20 (free data)', '台股、美股、加密货币几乎实时；期货延迟约 10 分钟，其他国家指数约 15～20 分钟（免费数据的限制）', '台湾株・米国株・暗号資産はほぼリアルタイム。先物は約 10 分、他の国の指数は約 15～20 分遅れ（無料データの制約）', '대만·미국 주식과 코인은 거의 실시간, 선물은 약 10분, 다른 나라 지수는 약 15~20분 지연(무료 데이터의 한계)', 'Taiwán, EE. UU. y cripto casi en tiempo real; futuros unos 10 minutos y otros índices unos 15–20 de retraso (datos gratuitos)'],
     'p.help': ['使用說明', 'How it works', '使用说明', '使い方', '사용 방법', 'Cómo funciona'],
+    'pop.hint': ['按下面的按鈕打開小視窗。開好後這個視窗可以縮到工作列，但不要關掉，關掉小視窗也會跟著關。', 'Press the button to open the mini window. You can then minimize this window, but do not close it: the mini window closes with it.', '按下面的按钮打开小窗口。打开后这个窗口可以缩到任务栏，但不要关掉，关掉小窗口也会跟着关。', 'ボタンを押すとミニウィンドウが開きます。開いた後、このウィンドウは最小化できますが、閉じるとミニウィンドウも閉じます。', '버튼을 누르면 미니 창이 열립니다. 연 뒤 이 창은 최소화해도 되지만, 닫으면 미니 창도 함께 닫힙니다.', 'Pulsa el botón para abrir la ventana mini. Después puedes minimizar esta ventana, pero no la cierres: la mini se cerraría también.'],
+    'pop.open': ['開小視窗', 'Open mini window', '打开小窗口', 'ミニウィンドウを開く', '미니 창 열기', 'Abrir ventana mini'],
+    'pop.fail': ['打不開小視窗：{detail}', 'Could not open the mini window: {detail}', '打不开小窗口：{detail}', 'ミニウィンドウを開けません：{detail}', '미니 창을 열 수 없습니다: {detail}', 'No se pudo abrir la ventana mini: {detail}'],
+    'help.pop': ['彈出小視窗：按 ⧉ 再按「開小視窗」，就能浮在桌面、資料夾、Excel 上（要開著 Chrome）。藏身鍵和點圖示會關掉它；位置大小自己拖', 'Mini window: press ⧉, then "Open mini window" to float over the desktop, folders and Excel (Chrome must stay running). The hide key and toolbar icon close it; drag to move or resize', '弹出小窗口：按 ⧉ 再按「打开小窗口」，就能浮在桌面、文件夹、Excel 上（要开着 Chrome）。藏身键和点图标会关掉它；位置大小自己拖', 'ミニウィンドウ：⧉ を押して「ミニウィンドウを開く」を押すと、デスクトップ、フォルダ、Excel の上に浮かびます（Chrome は起動したまま）。隠れキーとアイコンで閉じます。位置とサイズはドラッグで調整', '미니 창: ⧉ 를 누른 뒤 "미니 창 열기"를 누르면 바탕 화면, 폴더, Excel 위에 뜹니다(Chrome 실행 필요). 숨기기 키와 아이콘으로 닫힙니다. 위치와 크기는 직접 드래그', 'Ventana mini: pulsa ⧉ y luego «Abrir ventana mini» para que flote sobre el escritorio, carpetas y Excel (Chrome debe seguir abierto). La tecla para ocultar y el icono la cierran; arrástrala para moverla o redimensionarla'],
     'p.debug': ['除錯', 'Debug', '调试', 'デバッグ', '디버그', 'Depuración'],
     'p.showLag': ['顯示 MIS 延遲統計', 'Show MIS delay stats', '显示 MIS 延迟统计', 'MIS 遅延の統計を表示', 'MIS 지연 통계 표시', 'Mostrar retraso de MIS'],
     'opt.auto':['自動', 'Auto', '自动', '自動', '자동', 'Automático'],
@@ -131,6 +142,8 @@ globalThis.PSI18n ??= (() => {
     'mkt.uk': ['英國', 'UK', '英国', '英国', '영국', 'Reino Unido'],
     'mkt.fr': ['法國', 'France', '法国', 'フランス', '프랑스', 'Francia'],
     'mkt.de': ['德國', 'Germany', '德国', 'ドイツ', '독일', 'Alemania'],
+    'mkt.crypto': ['加密貨幣', 'Crypto', '加密货币', '暗号資産', '코인', 'Cripto'],
+    'mkt.fut': ['期貨', 'Futures', '期货', '先物', '선물', 'Futuros'],
 
     // ---------- 指數名稱（key 是 idx.＋代號，見 markets.js 的 INDICES） ----------
     'idx.tse_t00': ['加權指數', 'TAIEX', '台湾加权指数', '台湾加権指数', '대만 가권지수', 'TAIEX'],
@@ -149,6 +162,11 @@ globalThis.PSI18n ??= (() => {
     'idx.^FTSE': ['FTSE 100', 'FTSE 100', '富时 100', 'FTSE 100', 'FTSE 100', 'FTSE 100'],
     'idx.^FCHI': ['CAC 40', 'CAC 40', 'CAC 40', 'CAC 40', 'CAC 40', 'CAC 40'],
     'idx.^GDAXI': ['DAX', 'DAX', 'DAX', 'DAX', 'DAX', 'DAX'],
+    'idx.BTC-USD': ['比特幣', 'Bitcoin', '比特币', 'ビットコイン', '비트코인', 'Bitcoin'],
+    'idx.ETH-USD': ['以太幣', 'Ethereum', '以太币', 'イーサリアム', '이더리움', 'Ethereum'],
+    'idx.GC=F': ['黃金', 'Gold', '黄金', '金', '금', 'Oro'],
+    'idx.SI=F': ['白銀', 'Silver', '白银', '銀', '은', 'Plata'],
+    'idx.CL=F': ['原油', 'Crude oil', '原油', '原油', '원유', 'Petróleo'],
   };
   /* eslint-enable max-len */
 
