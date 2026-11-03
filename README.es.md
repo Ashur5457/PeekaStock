@@ -35,11 +35,13 @@ Quería echar un vistazo al mercado durante el trabajo, pero abrir una aplicaci�
 - **Vista mini ▁**: la ventana se reduce a las orejas del gato y una línea, con una cotización distinta cada 4 s.
 - **Alertas**: si una cotización se mueve más de ±3% (ajustable) o llega a tu precio objetivo, aparece un bocadillo con una huella de gato (p. ej. «¡NVDA sube ▲3.2%!»); en modo discreto solo se resalta la fila. No usa notificaciones del sistema.
 - **Lista de seguimiento**: escribe `2330` o `AAPL` para añadir; detecta automáticamente si cotiza en TWSE, TPEx o EE. UU. Las acciones de EE. UU. muestran el ticker y las de Taiwán el nombre.
+- **Acciones de otros mercados**: escribe el código de Yahoo Finanzas con el sufijo de la bolsa (`7203.T` Tokio, `0700.HK` Hong Kong, `SHEL.L` Londres, `RY.TO` Canadá…). Hay unas 40 bolsas; aparecen en la pestaña Todo, una sección por país (Acciones de Hong Kong, Acciones de Japón…).
 - **Pestañas**: `Todo | Taiwán | EE. UU. | Mundo`, más tus propias pestañas (p. ej. «Tecnología», «Dividendos»). Una acción puede estar en varias pestañas.
 - **Índices mundiales**: 16 índices de Taiwán, EE. UU., China, Hong Kong, Japón, Corea, Singapur, Reino Unido, Francia y Alemania; cada uno se puede activar o desactivar.
 - **Cripto y futuros**: Bitcoin, Ethereum, oro, plata y petróleo, en su propia pestaña «Cripto/Futuros»; cada uno se activa por separado.
 - **Preapertura y tras el cierre en EE. UU.**: en esos horarios tus acciones de EE. UU. (las 20 primeras) muestran el último precio con «Pre» o «Post», calculado desde el último cierre. Estos precios no activan alertas.
 - **Ventana mini ⧉**: pulsa ⧉ y luego «Abrir ventana mini», y las cotizaciones flotan sobre el escritorio, carpetas, Excel y Word, siempre encima. Chrome debe seguir abierto; puedes minimizar la ventana principal, pero no cerrarla.
+- **Minigráficos, orden y estado del mercado**: un minigráfico junto a cada nombre muestra la tendencia del día (discontinua = cierre anterior; Taiwán solo mientras la ventana está abierta); clic en la columna de cambio para % / puntos; «⇅ Orden» a la derecha de las pestañas ordena por subidas o bajadas; cada título muestra Preapertura / Abierto / Pausa / Tras el cierre / Cerrado.
 - **Colores**: rojo sube, verde baja (convención de Taiwán) o verde sube, rojo baja (convención de EE. UU.).
 - **Idiomas**: 繁中 / English / 日本語 / 简中 / 한국어 / Español; por defecto sigue el idioma de Chrome.
 
@@ -51,6 +53,7 @@ Quería echar un vistazo al mercado durante el trabajo, pero abrir una aplicaci�
 | Acciones de EE. UU., Dow Jones, S&P 500, Nasdaq, Semiconductores PHLX | Yahoo Finance | unos segundos |
 | Shanghái, Shenzhen, CSI 300, Hang Seng, Nikkei, Straits Times, FTSE, CAC, DAX | Yahoo Finance | unos 15 minutos |
 | KOSPI | Yahoo Finance | unos 20 minutos |
+| Acciones de otros mercados (unas 40 bolsas) | Yahoo Finance | casi todas 15–20 minutos; Canadá, Suecia y Finlandia unos segundos |
 | Preapertura y tras el cierre en EE. UU. | Yahoo Finance | de segundos a 1 minuto (cada 30 s) |
 | Bitcoin, Ethereum | Yahoo Finance | segundos |
 | Oro, plata, petróleo (futuros) | Yahoo Finance | unos 10 minutos |
@@ -63,7 +66,7 @@ Quería echar un vistazo al mercado durante el trabajo, pero abrir una aplicaci�
 flowchart LR
   BOX["Ventana en una pestaña visible<br/>tick cada 5 s"] --> SW["Segundo plano sw.js<br/>solo con el mercado abierto"]
   SW --> MIS["Bolsa de Taiwán MIS<br/>Taiwán (cada 5 s)"]
-  SW --> YF["Yahoo Finance<br/>EE. UU. (5 s), índices (30 s)"]
+  SW --> YF["Yahoo Finance<br/>EE. UU. (5 s), índices y acciones (30 s)"]
   MIS --> ST["chrome.storage.session"]
   YF --> ST
   ST --> ALL["Se actualizan las ventanas de todas las pestañas"]
@@ -103,14 +106,15 @@ Pulsa el botón de pieza de puzle 🧩 de la barra y fija PeekaStock (el icono o
 
 ## 🎬 Uso
 
-1. Pasa el ratón sobre la ventana para ver la barra: **⚙** ajustes, **▁** vista mini, **◐** modo discreto, **👁** ocultar, **↺** restablecer posición, **⧉** ventana mini, **?** cómo funciona. Arrastra la barra (la cabeza del gato) para mover la ventana.
-2. **⚙ Ajustes**:
-   - **Lista de seguimiento**: escribe un código y pulsa Añadir; ↑↓ para ordenar, ✕ para quitar
+1. Pasa el ratón sobre la ventana para ver la barra: **⚙** ajustes, **▁** vista mini, **◐** modo discreto, **👁** ocultar, **↺** restablecer posición y tamaño, **⧉** ventana mini, **?** cómo funciona. Arrastra la barra (la cabeza del gato) para mover la ventana.
+2. **Cómo leer la ventana**: arriba están las pestañas (Todo / Taiwán / EE. UU. / Mundo / Cripto/Futuros y las tuyas); «⇅ Orden» a la derecha alterna entre tu orden, subidas y bajadas; junto a cada título va el estado del mercado (Abierto, Pausa, Cerrado…); el pequeño gráfico junto a cada nombre es la tendencia del día; haz clic en la columna de cambio para alternar entre % y puntos.
+3. **⚙ Ajustes**:
+   - **Lista de seguimiento**: escribe un código y pulsa Añadir (otros mercados usan el código de Yahoo Finanzas con su sufijo, p. ej. `7203.T`); ↑↓ para ordenar, ✕ para quitar
    - **Pestañas propias**: añadir, ✎ renombrar, ↑↓, ✕; en «Añadir a la pestaña» marca las acciones e índices que quieras incluir
    - **Índices**: actívalos o desactívalos uno a uno
    - **Alertas**: grandes movimientos ±% (3% por defecto); para una alerta de precio pulsa 🔔 en la fila y fija un precio superior/inferior; con «En segundo plano» activado, los valores con alerta se comprueban cada minuto aunque no veas la ventana (solo con el mercado abierto) y el aviso aparece la próxima vez que la veas
-   - **Vista**: idioma y colores
-3. **Tecla para ocultar Alt+Shift+H**: oculta la ventana en todas las pestañas; pulsa otra vez para mostrarla. El icono de PeekaStock hace lo mismo.
+   - **Vista**: idioma, colores y minigráficos
+4. **Tecla para ocultar Alt+Shift+H**: oculta la ventana en todas las pestañas; pulsa otra vez para mostrarla. El icono de PeekaStock hace lo mismo.
 
 <img src="docs/readme/panel.png" width="480" alt="Panel de ajustes">
 
@@ -131,6 +135,7 @@ Chrome avisa de que PeekaStock puede «leer y cambiar todos tus datos de todos l
 - **No se tienen en cuenta los festivos**: en un festivo verás el cierre de la sesión anterior.
 - **Los precios de EE. UU.** son precios en tiempo real de un único mercado (Nasdaq) y pueden diferir ligeramente del precio consolidado de tu bróker.
 - **Los índices fuera de EE. UU.** ya llegan con 15–20 minutos de retraso en Yahoo.
+- **Las acciones de otros mercados** también llegan casi siempre con 15–20 minutos de retraso; Londres, Sudáfrica e Israel cotizan en peniques/céntimos, como sus bolsas, sin convertir.
 - **Páginas donde no aparece la ventana**: páginas `chrome://`, la página de Nueva pestaña, Chrome Web Store y el visor de PDF integrado.
 - Hasta 100 acciones en la lista y 10 pestañas propias.
 - Las traducciones de la interfaz y del README distintas del chino tradicional las generó una IA; se agradecen correcciones de hablantes nativos.

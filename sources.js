@@ -72,6 +72,19 @@ globalThis.PSSources ??= (() => {
   const chunks = (list, n) => Array.from({ length: Math.ceil(list.length / n) }, (_, i) => list.slice(i * n, i * n + n));
 
   // 名稱是 Yahoo 給的（有些中間夾一大串空白，例如 DAX，收成一格）；指數畫面上用 i18n 的名稱，不用這個
+  // 這一個交易日的時段 [開盤, 收盤]（毫秒）。收盤後 Yahoo 給的是下一個交易日的時段（2026-11-04 實測）
+  const periodOf = (meta) => {
+    const p = meta.currentTradingPeriod?.regular;
+    return p?.start && p?.end ? [p.start * 1000, p.end * 1000] : null;
+  };
+
+  // 當天走勢（迷你走勢線用）：spark 本來就回傳每 5 分鐘的收盤價，不用多發請求。[[時間（秒）, 價格]…]，沒有成交的那 5 分鐘（null）跳過
+  const lineOf = (resp) => {
+    const closes = resp.indicators?.quote?.[0]?.close ?? [];
+    return (resp.timestamp ?? []).map((ts, i) => [ts, closes[i]]).filter(([, v]) => v != null);
+  };
+
+  // cur：幣別。倫敦 GBp、南非 ZAc、以色列 ILA 的單位是「分」（Yahoo 照當地交易所的報法），不換算
   function parseSpark(json, at, items) {
     const bySymbol = new Map(items.map((i) => [i.symbol, i]));
     return (json?.spark?.result ?? []).filter((r) => bySymbol.has(r.symbol) && r.response?.[0]?.meta).map((r) => {
@@ -81,6 +94,7 @@ globalThis.PSSources ??= (() => {
         key: item.key, name: (meta.shortName ?? meta.longName ?? r.symbol).replace(/\s+/g, ' '),
         price: meta.regularMarketPrice ?? null, prev: meta.previousClose ?? meta.chartPreviousClose ?? null,
         time: meta.regularMarketTime ? meta.regularMarketTime * 1000 : null, fetchedAt: at, from: 'trade',
+        cur: meta.currency ?? null, period: periodOf(meta), line: lineOf(r.response[0]),
       });
     });
   }
@@ -141,13 +155,15 @@ globalThis.PSSources ??= (() => {
     return found ? { market: 'tw', code, ex: found.key, name: found.name } : null;
   }
 
-  // 美股：spark 查一次，不存在的代號不會出現在回應裡
-  async function lookupUs(code, fetchFn = fetch) {
-    const [found] = await spark([{ key: 'us', symbol: code }], fetchFn);
-    return found ? { market: 'us', code, name: found.name } : null;
+  // 美股和其他國家個股：spark 查一次，不存在的代號不會出現在回應裡
+  async function lookupYahoo(code, fetchFn = fetch, market = 'us') {
+    const [found] = await spark([{ key: market, symbol: code }], fetchFn);
+    return found ? { market, code, name: found.name } : null;
   }
 
-  const LOOKUP = { tw: lookupTw, us: lookupUs };
+  // 台股要問上市還是上櫃；其他市場都問 Yahoo
+  const LOOKUP = { tw: lookupTw };
+  const lookup = (market, code, fetchFn = fetch) => (LOOKUP[market] ?? lookupYahoo)(code, fetchFn, market);
 
-  return { SOURCES, LOOKUP, SPARK_MAX, EXT_MAX, parseMis, parseSpark, parseChart, num };
+  return { SOURCES, lookup, SPARK_MAX, EXT_MAX, parseMis, parseSpark, parseChart, num };
 })();

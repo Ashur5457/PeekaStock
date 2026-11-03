@@ -17,6 +17,7 @@ const GROUPS = [
   { id: 'us', every: 5000, source: 'spark' },    // 自選美股
   { id: 'idx', every: 30000, source: 'spark' },  // 其他國家指數、期貨
   { id: 'crypto', every: 5000, source: 'spark' },  // 加密貨幣（24 小時）
+  { id: 'gl', every: 30000, source: 'spark' },   // 其他國家個股（大多延遲 15～20 分，30 秒抓一次就夠）
   // 美股盤前盤後：每檔一個請求，所以只抓自選美股、只在延長交易時段、每 30 秒；不算提醒（alerts.js），背景提醒也不抓
   { id: 'ext', every: 30000, source: 'ext', extended: true,
     pick: (i) => i.market === 'us' && i.code, wanted: (i, now) => Boolean(PSMarkets.extSession(i.market, now)) },
@@ -38,7 +39,7 @@ async function lookup(m) {
   const code = PSPrefs.normalize(m.code);
   const market = PSPrefs.classify(code);
   if (!market) return { error: 'format' };
-  const found = await PSSources.LOOKUP[market](code);
+  const found = await PSSources.lookup(market, code);
   return found ? { found } : { error: 'notFound' };
 }
 
@@ -131,11 +132,29 @@ async function run(plan) {
   }
 }
 
+// ---------- 走勢線 ----------
+
+// 台股（MIS）沒有當天走勢：把每次抓到的價格接起來（所以只有框看得見的那段時間），換日就重來
+const LINE_MAX = 600;
+function growLine(prev, q) {
+  if (q.price == null || !q.time) return prev?.line;
+  const day = (sec) => PSAlerts.dayIn('tw', sec * 1000);
+  const t = Math.floor(q.time / 1000);
+  const old = prev?.line?.length && day(prev.line.at(-1)[0]) === day(t) ? prev.line : [];
+  if (old.length && old.at(-1)[0] >= t) return old;
+  return [...old, [t, q.price]].slice(-LINE_MAX);
+}
+// 沒有自帶走勢的來源怎麼補：台股自己接；盤前盤後（chart）沿用 spark 抓到的正常時段走勢
+const LINE_FROM = { tw: (q, prev) => growLine(prev, q), ext: (q, prev) => prev?.line };
+
 async function save(results, stored) {
   const quotes = { ...stored.quotes };
   const status = { ...stored.status };
   for (const r of results) {
-    r.quotes.forEach((q) => { quotes[q.key] = q; });
+    r.quotes.forEach((q) => {
+      const line = q.line ?? LINE_FROM[r.id]?.(q, quotes[q.key]);
+      quotes[q.key] = line ? { ...q, line } : q;
+    });
     status[r.id] = r.status;
   }
   const tw = results.find((r) => r.id === 'tw');

@@ -6,7 +6,7 @@
 globalThis.PSBox ??= (() => {
   const MIN_W = 220, MIN_H = 80;
   const BAR_ROOM = 24;   // 工具列浮在框上緣外面，框的上方要留這麼多空間，工具列才不會跑出畫面
-  const DEFAULT_W = 320, DEFAULT_H = 420, MARGIN = 16;
+  const DEFAULT_W = 370, DEFAULT_H = 420, MARGIN = 16;   // 寬 370：加了迷你走勢線那一欄，六種語言都放得下（測試頁實測）
 
   const fit = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
   // 框最大只能佔畫面寬 95%、高 90%（例如全螢幕時拉大的存檔回到一般視窗）

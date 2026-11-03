@@ -35,11 +35,13 @@ I wanted to glance at the market during work, but a trading app is too conspicuo
 - **Mini peek ▁**: the box shrinks to cat ears and one line, showing the next quote every 4 s.
 - **Alerts**: when a quote moves more than ±3% (adjustable) or hits your target price, a paw bubble pops up in the box (e.g. "NVDA up ▲3.2%!"); in stealth mode only the row is highlighted. No system notifications.
 - **Watchlist**: type `2330` or `AAPL` to add; listed (TWSE) / OTC (TPEx) / US is detected automatically. US stocks show tickers, Taiwan stocks show names.
+- **Stocks from other markets**: type the Yahoo Finance code with its exchange suffix (`7203.T` Tokyo, `0700.HK` Hong Kong, `SHEL.L` London, `RY.TO` Canada, …). About 40 exchanges are supported; they appear in the All tab, one section per country (Hong Kong stocks, Japan stocks, …).
 - **Tabs**: `All | Taiwan | US | World`, plus your own tabs (e.g. "Tech", "Dividend"). A stock can be in several tabs.
 - **World indices**: 16 indices from Taiwan, US, China, Hong Kong, Japan, Korea, Singapore, UK, France and Germany, each can be turned on or off.
 - **Crypto and futures**: Bitcoin, Ethereum, gold, silver and crude oil, in their own "Crypto/Futures" tab; each can be turned on or off.
 - **US pre-market and after-hours**: during those sessions your US stocks (first 20) show the latest price tagged "Pre" or "Post", measured from the last close. These prices do not trigger alerts.
 - **Mini window ⧉**: press ⧉, then "Open mini window", and quotes float above the desktop, folders, Excel and Word, always on top. Chrome must stay running; you can minimize the host window but not close it.
+- **Sparklines, sorting, market status**: a small chart next to each name shows today's trend (dashed = previous close; Taiwan only while the box is open); click the change column to switch % / points; "⇅ Sort" at the right of the tabs switches to gainers or losers first; each section title shows Pre-market / Open / Lunch break / After hours / Closed.
 - **Up/down colors**: red up, green down (Taiwan convention) or green up, red down (US convention).
 - **UI languages**: 繁中 / English / 日本語 / 简中 / 한국어 / Español, following Chrome's language by default.
 
@@ -51,6 +53,7 @@ I wanted to glance at the market during work, but a trading app is too conspicuo
 | US stocks, Dow Jones, S&P 500, Nasdaq, PHLX Semiconductor | Yahoo Finance | a few seconds |
 | Shanghai, Shenzhen, CSI 300, Hang Seng, Nikkei, STI, FTSE, CAC, DAX | Yahoo Finance | about 15 minutes |
 | KOSPI | Yahoo Finance | about 20 minutes |
+| Stocks from other markets (about 40 exchanges) | Yahoo Finance | mostly 15–20 minutes; Canada, Sweden, Finland a few seconds |
 | US pre-market and after-hours | Yahoo Finance | seconds to about 1 minute (updated every 30 s) |
 | Bitcoin, Ethereum | Yahoo Finance | seconds |
 | Gold, silver, crude oil (futures) | Yahoo Finance | about 10 minutes |
@@ -63,7 +66,7 @@ I wanted to glance at the market during work, but a trading app is too conspicuo
 flowchart LR
   BOX["Box on a visible tab<br/>tick every 5 s"] --> SW["Background sw.js<br/>schedule: only while open"]
   SW --> MIS["TWSE MIS<br/>Taiwan (every 5 s)"]
-  SW --> YF["Yahoo Finance<br/>US stocks (5 s), indices (30 s)"]
+  SW --> YF["Yahoo Finance<br/>US stocks (5 s), indices & stocks (30 s)"]
   MIS --> ST["chrome.storage.session"]
   YF --> ST
   ST --> ALL["Boxes in all tabs update"]
@@ -103,14 +106,15 @@ Click the puzzle button 🧩 in the toolbar and pin PeekaStock (clicking the ico
 
 ## 🎬 Usage
 
-1. Hover over the box to show the toolbar: **⚙** settings, **▁** mini peek, **◐** stealth mode, **👁** hide, **↺** reset position, **⧉** mini window, **?** how it works. Drag the toolbar (cat head) to move the box.
-2. **⚙ Settings**:
-   - **Watchlist**: enter a code and click Add; ↑↓ to reorder, ✕ to remove
+1. Hover over the box to show the toolbar: **⚙** settings, **▁** mini peek, **◐** stealth mode, **👁** hide, **↺** reset position and size, **⧉** mini window, **?** how it works. Drag the toolbar (cat head) to move the box.
+2. **Reading the box**: tabs along the top (All / Taiwan / US / World / Crypto/Futures plus your own); "⇅ Sort" on the right switches between your order, gainers and losers; each section title shows the market status (Open, Lunch break, Closed…); the small chart next to each name is today's trend; click the change column to switch between % and points.
+3. **⚙ Settings**:
+   - **Watchlist**: enter a code and click Add (other markets use the Yahoo Finance code with its suffix, e.g. `7203.T`); ↑↓ to reorder, ✕ to remove
    - **Custom tabs**: add, ✎ rename, ↑↓, ✕; tick what goes into a tab under "Add to tab"
    - **Indices**: turn each on or off
    - **Alerts**: big moves ±% (default 3%); for a price alert tap 🔔 on a watchlist row and set an upper/lower price; with "Background" on, alerted items are also checked once a minute while the box is out of sight (market hours only), and the alert pops up the next time you see the box
-   - **Display**: UI language, up/down colors
-3. **Hide key Alt+Shift+H**: hides the box in all tabs; press again to bring it back. Clicking the PeekaStock toolbar icon does the same.
+   - **Display**: UI language, up/down colors, sparklines
+4. **Hide key Alt+Shift+H**: hides the box in all tabs; press again to bring it back. Clicking the PeekaStock toolbar icon does the same.
 
 <img src="docs/readme/panel.png" width="480" alt="Settings panel">
 
@@ -131,6 +135,7 @@ Chrome warns that PeekaStock can "read and change all your data on all websites"
 - **Public holidays are not handled**: on a holiday you see the previous session's close.
 - **US prices** are Nasdaq real-time prices from a single exchange, which can differ slightly from the consolidated price your broker shows.
 - **Non-US indices** are delayed 15–20 minutes on Yahoo itself.
+- **Stocks from other markets** are mostly delayed 15–20 minutes too; London, South Africa and Israel quote in pence/cents, as their exchanges do, without conversion.
 - **Pages where the box cannot appear**: `chrome://` pages, the New Tab page, the Chrome Web Store, and the built-in PDF viewer.
 - Up to 100 watchlist stocks and 10 custom tabs.
 - UI and README translations other than Traditional Chinese are AI-generated; corrections from native speakers are welcome.

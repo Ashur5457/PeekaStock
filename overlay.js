@@ -82,6 +82,13 @@
                  color: #999; background: none; font: 11px/1.5 "Microsoft JhengHei", system-ui, sans-serif; }
     button.tab:hover { color: #eee; }
     button.tab.on { color: #2A1F00; background: ${GOLD}; }
+    /* 排序鈕：貼在分頁列最右邊，分頁多到要捲動時也看得到 */
+    button.sort { position: sticky; right: 0; margin-left: auto; flex: none; padding: 1px 9px; border: 1px solid #666; border-radius: 999px;
+                  cursor: pointer; white-space: nowrap; color: #ddd; background: #2A2733;
+                  font: 11px/1.5 "Microsoft JhengHei", system-ui, sans-serif; box-shadow: -8px 0 6px rgba(30, 28, 36, .97); }
+    button.sort:hover { border-color: ${GOLD}; }
+    button.sort.on { color: #2A1F00; background: ${GOLD}; border-color: ${GOLD}; }
+    div.box[data-look=stealth] button.sort { background: none; box-shadow: none; color: #888; border-color: #888; }
 
     /* 報價：放不下就在框裡捲動；下方留空間，捲軸才不會被右下角的縮放把手蓋住 */
     div.list { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; margin: 6px 3px 0 0; padding: 0 6px 0 10px;
@@ -89,10 +96,15 @@
     /* font、color 要寫明：小視窗的文件是舊式相容模式，表格不會自動繼承字體大小和顏色 */
     table { border-collapse: collapse; font: inherit; color: inherit; font-variant-numeric: tabular-nums; }
     td { padding: 0 4px; white-space: nowrap; }
-    td.name { max-width: 6.5em; overflow: hidden; text-overflow: ellipsis; }   /* 美股全名很長（NVIDIA Corporation），截斷，滑鼠移上看全名 */
+    td.name { max-width: 6em; overflow: hidden; text-overflow: ellipsis; }   /* 美股全名很長（NVIDIA Corporation），截斷，滑鼠移上看全名 */
     td.num { text-align: right; }
     td.tag { color: #F8B500; padding: 0 2px; }
     td.when { color: #999; }
+    td.chg { cursor: pointer; }   /* 點一下切換 ％／點數 */
+    td.spark { padding: 0 3px; line-height: 0; }   /* 迷你走勢線（見 sparkSvg） */
+    td.spark svg { display: block; }
+    tr.section span.st { margin-left: 6px; color: #888; font-weight: normal; letter-spacing: 0; }
+    tr.section span.st.open { color: #ddd; }
     tr.stale td { opacity: .45; }
     tr.stale td.when::after { content: " \\1F4A4"; font-size: 10px; }   /* 資料舊了：貓睡著了 💤 */
     tr.section td { padding: 6px 5px 1px; color: ${GOLD}; font-size: 11px; font-weight: 600; letter-spacing: .08em; }
@@ -282,6 +294,11 @@
     if (b) ACTIONS[b.dataset.act]();
     const tab = e.target.closest('button.tab');   // 分頁列只在設定變更時重畫，可以用 click
     if (tab) PSPrefs.update({ tab: tab.dataset.tab });
+    if (e.target.closest('button.sort')) PSPrefs.update({ sort: PSPrefs.nextSort(prefs.sort) });
+  });
+  // 漲跌欄每幾秒重畫，用 pointerdown（CLAUDE.md 第 4 節坑 1）
+  root.addEventListener('pointerdown', (e) => {
+    if (e.button === 0 && e.target.closest('td.chg')) PSPrefs.update({ chgMode: (CHG[prefs.chgMode] ?? CHG.pct).next });
   });
 
   // ---------- 格式 ----------
@@ -292,12 +309,19 @@
   const ARROW = { up: '▲', down: '▼', '': '' };
   const dirOf = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : '');
   const fmtPct = (v) => (v == null ? '' : `${ARROW[dirOf(v)]}${Math.abs(v).toFixed(2)}%`);
+  // 漲跌欄：點一下在漲跌幅％和漲跌點數之間切換（prefs.chgMode，所有框同步）。
+  // 點數 100 以上不顯示小數（▲1,235），欄寬才不會比％寬
+  const fmtPoints = (v) => (Math.abs(v) >= 100 ? Math.round(Math.abs(v)).toLocaleString('en-US') : fmtPrice(Math.abs(v)));
+  const CHG = {
+    pct: { next: 'chg', text: (q) => fmtPct(q?.pct) },
+    chg: { next: 'pct', text: (q) => (q?.chg == null ? '' : `${ARROW[dirOf(q.chg)]}${fmtPoints(q.chg)}`) },
+  };
   const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
-  // 今天的資料顯示時:分:秒；不是今天的（休市中的前一日收盤）只顯示月-日，欄位才不會太寬
+  // 今天的資料顯示時:分（秒數放滑鼠提示，讓出走勢線的寬度）；不是今天的（休市中的前一日收盤）只顯示月-日
   const fmtWhen = (ms, now) => {
     if (ms == null) return '';
     const s = new Date(ms).toLocaleString('sv-SE');
-    return sameDay(ms, now) ? s.slice(11, 19) : s.slice(5, 10);
+    return sameDay(ms, now) ? s.slice(11, 16) : s.slice(5, 10);
   };
 
   function cell(text, cls = '') {
@@ -307,10 +331,14 @@
     return td;
   }
 
-  // 一列：名稱、價格、（買價／賣價／盤前／盤後）、漲跌％、資料時間
+  // 走勢線那一欄：所有列都要有（沒有線的留空格），欄位才對得齊；關掉或隱身模式時整欄拿掉
+  const showLine = () => prefs.line && !prefs.stealth;
+  const COLS = () => (showLine() ? 6 : 5);
+
+  // 一列：名稱、（走勢線）、價格、（買價／賣價／盤前／盤後）、漲跌％、資料時間
   function rowView(item, quote, now) {
     const tr = document.createElement('tr');
-    const open = PSMarkets.isOpen(item.market, now);
+    const open = PSMarkets.isOpen(item.market, now, quote, item.delay);
     const lag = quote?.time ? (now - quote.time) / 1000 : null;
     tr.classList.toggle('stale', open && lag > STALE_SEC + (item.delay ?? 0));
     tr.classList.toggle('closed', !open);
@@ -323,11 +351,36 @@
     if (side) tag.title = t(`tag.${side}Hint`, { close: fmtPrice(quote.prev) });
     const when = cell(fmtWhen(quote?.time, now), 'when');
     if (quote?.time) when.title = new Date(quote.time).toLocaleString('sv-SE');   // 完整資料時間
-    tr.append(
-      name, cell(fmtPrice(quote?.price), `num ${dirOf(quote?.chg)}`),
-      tag, cell(fmtPct(quote?.pct), `num ${dirOf(quote?.chg)}`), when,
-    );
+    const chg = cell((CHG[prefs.chgMode] ?? CHG.pct).text(quote), `num chg ${dirOf(quote?.chg)}`);
+    chg.title = t('ov.chgHint');
+    const spark = showLine() ? [sparkCell(item, quote)] : [];
+    tr.append(name, ...spark, cell(fmtPrice(quote?.price), `num ${dirOf(quote?.chg)}`), tag, chg, when);
     return tr;
+  }
+
+  // ---------- 迷你走勢線 ----------
+
+  // 名稱和價格之間的一小格：當天走勢＋昨收虛線，顏色照當天漲跌（像 Robinhood 的自選清單）
+  const LINE_COLOR = { red: { up: '#ff6b6b', down: '#4cd07d' }, green: { up: '#4cd07d', down: '#ff6b6b' } };
+  const SPARK_W = 40, SPARK_H = 16;
+  function sparkCell(item, quote) {
+    const td = cell('', 'spark');
+    td.innerHTML = sparkSvg(item, quote);   // 只有我們自己算出來的數字，沒有外來文字
+    return td;
+  }
+  function sparkSvg(item, quote) {
+    const domain = PSMarkets.lineDomain(item.market, quote);
+    if (!domain || quote.line.length < 2) return '';
+    const [t0, t1] = domain.map((ms) => ms / 1000);
+    const values = [...quote.line.map(([, v]) => v), ...(quote.prev ? [quote.prev] : [])];
+    const lo = Math.min(...values), span = Math.max(...values) - lo || 1;
+    const x = (ts) => (Math.min(Math.max((ts - t0) / (t1 - t0), 0), 1) * SPARK_W).toFixed(1);
+    const y = (v) => (1.5 + (1 - (v - lo) / span) * (SPARK_H - 3)).toFixed(1);
+    const path = quote.line.map(([ts, v], i) => `${i ? 'L' : 'M'}${x(ts)} ${y(v)}`).join('');
+    const color = (LINE_COLOR[prefs.upColor] ?? LINE_COLOR.red)[dirOf(quote.chg)] ?? '#999';
+    const base = quote.prev ? `<path d="M0 ${y(quote.prev)}H${SPARK_W}" stroke="#777" stroke-dasharray="2 2" fill="none"/>` : '';
+    return `<svg width="${SPARK_W}" height="${SPARK_H}" viewBox="0 0 ${SPARK_W} ${SPARK_H}" aria-hidden="true">${base}`
+      + `<path d="${path}" stroke="${color}" stroke-width="1.3" stroke-linejoin="round" fill="none"/></svg>`;
   }
 
   // 底部：抓取錯誤＋MIS 延遲統計（v0.2 觀察用，貼回來給開發者）
@@ -340,7 +393,7 @@
   }
 
   // 抓取群組 → 錯誤列上顯示的名稱
-  const GROUP_KEY = { tw: 'sec.tw', us: 'sec.us', idx: 'sec.world', crypto: 'sec.alt', ext: 'sec.us' };
+  const GROUP_KEY = { tw: 'sec.tw', us: 'sec.us', idx: 'sec.world', crypto: 'sec.alt', ext: 'sec.us', gl: 'grp.gl' };
   function footView() {
     const errors = Object.entries(session.status ?? {}).filter(([, s]) => !s.ok).map(([id, s]) => {
       const d = document.createElement('div');
@@ -357,20 +410,34 @@
     foot.hidden = !lines.length;
   }
 
-  function sectionRow(title) {
+  // 段標題＋市場狀態（盤中、午休、盤前、盤後、休市）
+  function sectionRow(title, status) {
     const tr = document.createElement('tr');
     tr.className = 'section';
     const td = cell(title);
-    td.colSpan = 5;
+    td.colSpan = COLS();
+    if (status) {
+      const st = document.createElement('span');
+      st.className = `st ${status}`;
+      st.textContent = t(`st.${status}`);
+      td.append(st);
+    }
     tr.append(td);
     return tr;
+  }
+
+  // 分頁裡有好幾段才顯示段標題；只有一段時，有市場狀態的話還是留一行只放狀態
+  function headRows(s, secs, now, quotes) {
+    const status = s.market ? PSMarkets.phase(s.market, now, quotes[s.items[0].key]) : null;
+    if (secs.length > 1) return [sectionRow(t(s.titleKey), status)];
+    return status ? [sectionRow('', status)] : [];
   }
 
   // 分頁裡沒有東西時的提示（一般外觀前面有 🐾）
   function emptyRow() {
     const tr = document.createElement('tr');
     const td = cell(t('ov.empty'), 'empty');
-    td.colSpan = 5;
+    td.colSpan = COLS();
     tr.append(td);
     return tr;
   }
@@ -384,10 +451,8 @@
   function render() {
     const now = Date.now();
     const quotes = session.quotes ?? {};
-    const secs = PSPrefs.sections(currentItems());
-    const rows = secs.flatMap((s) => [
-      ...(secs.length > 1 ? [sectionRow(t(s.titleKey))] : []), ...s.items.map((i) => rowView(i, quotes[i.key], now)),
-    ]);
+    const secs = PSPrefs.sections(currentItems(), quotes, prefs.sort);
+    const rows = secs.flatMap((s) => [...headRows(s, secs, now, quotes), ...s.items.map((i) => rowView(i, quotes[i.key], now))]);
     table.replaceChildren(...(rows.length ? rows : [emptyRow()]));
     renderMini(now, quotes);
     footView();
@@ -398,7 +463,7 @@
   let miniIndex = 0;
   function renderMini(now = Date.now(), quotes = session.quotes ?? {}) {
     if (!prefs.mini) return;
-    const items = PSPrefs.sections(currentItems()).flatMap((s) => s.items);
+    const items = PSPrefs.sections(currentItems(), quotes, prefs.sort).flatMap((s) => s.items);
     miniTable.replaceChildren(items.length ? rowView(items[miniIndex % items.length], quotes[items[miniIndex % items.length].key], now) : emptyRow());
   }
   setInterval(() => {
@@ -415,7 +480,17 @@
       b.dataset.tab = x.id;
       b.textContent = x.name ?? t(x.nameKey);   // 自創分頁用使用者取的名稱，內建分頁查翻譯
       return b;
-    }));
+    }), sortButton());
+  }
+
+  // 分頁列最右邊的排序鈕，直接寫出目前的排序：⇅ 排序 → ▲ 漲幅 → ▼ 跌幅（排序中是金底）
+  function sortButton() {
+    const mode = PSPrefs.SORT_ORDER.includes(prefs.sort) ? prefs.sort : 'manual';
+    const b = document.createElement('button');
+    b.className = mode === 'manual' ? 'sort' : 'sort on';
+    b.textContent = t(`sortBtn.${mode}`);
+    b.title = t(`sort.${mode}`);
+    return b;
   }
 
   // ---------- 提醒的貓掌泡泡 ----------

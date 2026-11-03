@@ -47,25 +47,45 @@ globalThis.PSPanel ??= (() => {
     div.aedit input.num { width: 6em; }
     div.phint { margin: -2px 0 4px; color: #999; font-size: 11px; }
     div.phelp[hidden], div.pbody[hidden] { display: none; }
-    div.hrow { display: flex; gap: 8px; margin: 8px 0; }
+    details.hgrp { border-bottom: 1px solid #3A3646; }
+    details.hgrp summary { display: flex; align-items: baseline; gap: 6px; padding: 7px 2px; cursor: pointer; list-style: none; }
+    details.hgrp summary::-webkit-details-marker { display: none; }
+    details.hgrp summary::after { content: "\\25B8"; margin-left: auto; color: #888; }   /* ▸，打開時轉成 ▾ */
+    details.hgrp[open] summary::after { content: "\\25BE"; }
+    details.hgrp summary:hover b { color: #FFC23D; }
+    details.hgrp summary small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #888; font-size: 11px; }
+    details.hgrp summary b { flex: none; }
+    details.hgrp[open] summary small { display: none; }   /* 展開時摘要就是下面那幾行，不重複 */
+    div.hrow { display: flex; gap: 8px; margin: 0 0 6px; padding-left: 4px; cursor: help; }
     span.hico { flex: none; width: 1.6em; text-align: center; color: #FFC23D; }
+    a.hmore { display: block; margin-top: 8px; color: #999; font-size: 11px; text-decoration: none; }
+    a.hmore:hover { color: #FFC23D; }
     kbd.hk { padding: 0 6px; border: 1px solid #555; border-radius: 4px; background: #111; color: #FFC23D; font: 11px/18px system-ui, sans-serif; }
     button.add.rec { padding: 1px 8px; font-size: 11px; }
     button.add.rec.on { background: #E5534B; color: #fff; }`;
 
-  // 使用說明（工具列 ?）：[圖示, i18n key, 圖示的 i18n key（「買」標記每種語言不同）]
+  // 使用說明（工具列 ?）：分 5 組、可收合，打開時只看到組名和摘要（hg.＋組、hg.＋組＋Sum），點一組才展開，一次只開一組。
+  // 每項一行（hs.＋項目），完整說明放滑鼠提示（help.＋項目）。項目：[圖示, 名稱, 圖示的 i18n key（「買」標記每種語言不同）]
   const HELP = [
-    ['👁', 'help.hide'], ['⌨', 'help.keys'], ['◐', 'help.stealth'], ['▁', 'help.mini'], ['↺', 'help.move'],
-    ['⧉', 'help.pop'], ['🔔', 'help.alerts'], ['💤', 'help.stale'], ['', 'help.tag', 'tag.bid'], ['⏱', 'help.delay'],
+    { id: 'hide', icon: '👁', items: [['👁', 'hide'], ['⌨', 'keys'], ['◐', 'stealth']] },
+    { id: 'layout', icon: '🗂', items: [['🗂', 'tabs'], ['↺', 'move'], ['▁', 'mini'], ['⧉', 'pop']] },
+    { id: 'read', icon: '📈', items: [['📈', 'line'], ['%', 'chg'], ['⇅', 'sort'], ['●', 'status'], ['💤', 'stale'], ['', 'tag', 'tag.bid']] },
+    { id: 'data', icon: '🌏', items: [['🌏', 'global'], ['⏱', 'delay']] },
+    { id: 'alert', icon: '🔔', items: [['🔔', 'alerts']] },
   ];
+  const helpItem = ([icon, name, iconKey]) => `<div class="hrow" data-i18n-title="help.${name}">`
+    + `<span class="hico"${iconKey ? ` data-i18n="${iconKey}"` : ''}>${icon}</span><span data-i18n="hs.${name}"></span></div>`;
+  // <details name>：同名的只能開一個（Chrome 120 起；舊版就是可以同時開好幾個，不會壞）
+  const helpGroup = (g) => `<details class="hgrp" name="help"><summary><span class="hico">${g.icon}</span>`
+    + `<b data-i18n="hg.${g.id}"></b><small data-i18n="hg.${g.id}Sum"></small></summary>${g.items.map(helpItem).join('')}</details>`;
 
   const HTML = `
     <div class="settings" hidden>
       <div class="phead"><span class="ptitle" data-i18n="p.title"></span><button class="pclose" data-act="close" data-i18n-title="p.close">✕</button></div>
-      <div class="phelp" hidden>${HELP.map(([icon, key, iconKey]) => `<div class="hrow"><span class="hico"${iconKey ? ` data-i18n="${iconKey}"` : ''}>${icon}</span><span data-i18n="${key}"></span></div>`).join('')}</div>
+      <div class="phelp" hidden>${HELP.map(helpGroup).join('')}<a class="hmore" target="_blank" rel="noopener" data-i18n="help.more"></a></div>
       <div class="pbody">
       <div class="psec" data-i18n="p.watch"></div>
-      <form class="padd" data-form="watch"><input class="code" data-i18n-placeholder="p.codeHolder" autocomplete="off" maxlength="12"><button class="add" type="submit" data-i18n="p.add"></button></form>
+      <form class="padd" data-form="watch"><input class="code" data-i18n-placeholder="p.codeHolder" autocomplete="off" maxlength="16"><button class="add" type="submit" data-i18n="p.add"></button></form>
       <div class="pmsg" data-msg="watch"></div>
       <div class="wlist"></div>
       <div class="psec" data-i18n="p.tabs"></div>
@@ -93,6 +113,9 @@ globalThis.PSPanel ??= (() => {
       <div class="irow"><span class="region" data-i18n="p.upColor"></span><div class="ichecks">
         <label class="idx"><input type="radio" class="idx" name="upColor" data-pref="upColor" value="red"><span data-i18n="opt.redUp"></span></label>
         <label class="idx"><input type="radio" class="idx" name="upColor" data-pref="upColor" value="green"><span data-i18n="opt.greenUp"></span></label>
+      </div></div>
+      <div class="irow"><span class="region" data-i18n="p.line"></span><div class="ichecks">
+        <label class="idx"><input type="checkbox" class="idx" data-pref="line"><span data-i18n="p.lineOn"></span></label>
       </div></div>
       <div class="irow"><span class="region" data-i18n="p.hide"></span><div class="ichecks">
         <label class="idx"><input type="checkbox" class="idx" data-pref="dblHide"><span data-i18n="p.dblHide"></span></label>
@@ -205,6 +228,9 @@ globalThis.PSPanel ??= (() => {
 
     // ---------- 畫面 ----------
 
+    // 自選股那一列的市場欄：台股上市／上櫃、美股；其他國家個股顯示地區
+    const exKey = (w) => (w.ex ? `ex.${w.ex}` : w.market === 'us' ? 'ex.us' : `mkt.${w.market}`);
+
     function watchRow(w, quotes, alerts) {
       const key = PSPrefs.keyOf(w);
       const row = document.createElement('div');
@@ -212,7 +238,7 @@ globalThis.PSPanel ??= (() => {
       const bell = opButton('bell', key, '🔔');
       bell.classList.toggle('on', Boolean(alerts[key]));
       row.append(
-        span('wname', w.name ?? quotes[key]?.name ?? w.code), span('wcode', w.code), span('wex', t(`ex.${w.ex ?? 'us'}`)),
+        span('wname', w.name ?? quotes[key]?.name ?? w.code), span('wcode', w.code), span('wex', t(exKey(w))),
         bell, opButton('up', key, '↑'), opButton('down', key, '↓'), opButton('del', key, '✕'),
       );
       return key === belling ? [row, alertEditor(key, alerts[key], quotes[key])] : [row];
@@ -273,6 +299,7 @@ globalThis.PSPanel ??= (() => {
       q('input[data-pref=showLag]').checked = p.showLag;
       q('input[data-pref=bgAlert]').checked = p.bgAlert;
       q('input[data-pref=dblHide]').checked = p.dblHide;
+      q('input[data-pref=line]').checked = p.line;
       q('input[data-hk=on]').checked = p.hideKey.on;
       q('input[data-hk=double]').checked = p.hideKey.double;
       q('kbd.hk').textContent = recording ? t('p.recording') : PSBlank.keyLabel(p.hideKey);
@@ -470,6 +497,10 @@ globalThis.PSPanel ??= (() => {
       const title = q('span.ptitle');
       title.dataset.i18n = view === 'help' ? 'p.help' : 'p.title';
       title.textContent = t(title.dataset.i18n);
+      if (view === 'help') {   // 每次打開都從收起來的目錄開始；完整說明連到目前語言的 README
+        panel.querySelectorAll('details.hgrp').forEach((d) => { d.open = false; });
+        q('a.hmore').href = t('help.readme');
+      }
       if (view === 'settings') {
         say('watch', '');
         say('tab', '');

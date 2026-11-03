@@ -21,7 +21,7 @@ globalThis.PSAlerts ??= (() => {
     const hits = [];
     for (const item of items) {
       const q = quotes[item.key];
-      if (!q || q.price == null || EXT.includes(q.from) || !PSMarkets.isOpen(item.market, now)) continue;
+      if (!q || q.price == null || EXT.includes(q.from) || !PSMarkets.isOpen(item.market, now, q, item.delay)) continue;
       const a = prefs.alerts?.[item.key];
       RULES.filter((r) => r.test(q, a, prefs.moveAlert)).forEach((r) => {
         const id = idOf(item.key, r.kind, item.market, now);

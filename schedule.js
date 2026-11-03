@@ -9,8 +9,15 @@ globalThis.PSSchedule ??= (() => {
   // 連續失敗就把間隔加倍：5 → 10 → 20 秒…，最多 5 分鐘；成功一次就恢復
   const waitOf = (plan, s) => Math.min(plan.every * 2 ** (s?.fails ?? 0), MAX_WAIT);
 
-  // 市場開著的才抓；休市的只有「還沒有報價」時抓一次（晚上打開也看得到前一個交易日的收盤）
-  const wanted = (item, now, quotes) => PSMarkets.isOpen(item.market, now) || !quotes[item.key];
+  const REFRESH = 30 * 60 * 1000;
+
+  // 市場開著的才抓；休市的只有「還沒有報價」時抓一次（晚上打開也看得到前一個交易日的收盤）。
+  // 看報價交易時段的市場（markets.js 的 byQuote）休市時每 30 分鐘再問一次，才知道下一次幾點開盤
+  function wanted(item, now, quotes) {
+    const q = quotes[item.key];
+    if (!q || PSMarkets.isOpen(item.market, now, q, item.delay)) return true;
+    return PSMarkets.byQuote(item.market) && now - q.fetchedAt >= REFRESH;
+  }
 
   function due(plans, now, state, quotes) {
     return plans
@@ -19,5 +26,5 @@ globalThis.PSSchedule ??= (() => {
       .filter((p) => p.items.length);
   }
 
-  return { due, waitOf, MAX_WAIT };
+  return { due, waitOf, MAX_WAIT, REFRESH };
 })();

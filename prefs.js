@@ -19,6 +19,9 @@ globalThis.PSPrefs ??= (() => {
     upColor: 'red',   // 漲跌顏色：red＝紅漲綠跌（台灣習慣）、green＝綠漲紅跌（美國習慣）
     showLag: false,   // 框底部顯示 MIS 延遲統計（開發觀察用，一般使用者不需要）
     mini: false,      // 迷你偷看模式：框只剩貓耳朵＋一行報價（每 4 秒換一檔）
+    line: true,       // 每一列背景畫當天的迷你走勢線（隱身模式不畫）
+    chgMode: 'pct',   // 漲跌欄顯示 pct＝漲跌幅％、chg＝漲跌點數（點一下漲跌欄切換）
+    sort: 'manual',   // 段內自選股的順序：manual＝自選順序、up＝漲幅大到小、down＝跌幅大到小（分頁列的 ⇅）
     alerts: {},       // 到價提醒：{ [項目 key]: { above?, below? } }（見 alerts.js）
     moveAlert: { on: true, pct: 3 },   // 大漲大跌提醒：漲跌幅 ≥ ±pct% 就提醒
     bgAlert: false,   // 背景提醒：Chrome 被蓋住時也每 1 分鐘檢查有設提醒的股票（chrome.alarms，只在開盤時段）
@@ -47,10 +50,12 @@ globalThis.PSPrefs ??= (() => {
 
   // ---------- 自選清單 ----------
 
-  // 使用者輸入的代號屬於哪個市場：台股 4～6 位數字，ETF 可帶一個英文字母（00878、00631L）；美股英文代號（BRK-B、BRK.B）
+  // 使用者輸入的代號屬於哪個市場：台股 4～6 位數字，ETF 可帶一個英文字母（00878、00631L）；美股英文代號（BRK-B、BRK.B）；
+  // 其他國家照 Yahoo 的代號帶交易所後綴（7203.T、0700.HK），先查後綴表（markets.js 的 SUFFIX）
   const CODE_RULES = [[/^\d{4,6}[A-Z]?$/, 'tw'], [/^[A-Z][A-Z.-]{0,9}$/, 'us']];
-  const normalize = (raw) => String(raw ?? '').trim().toUpperCase();
-  const classify = (code) => CODE_RULES.find(([re]) => re.test(code))?.[1] ?? null;
+  // 台股也可以照 Yahoo 打 2330.TW、6488.TWO：去掉後綴
+  const normalize = (raw) => String(raw ?? '').trim().toUpperCase().replace(/^(\d{4,6}[A-Z]?)\.TWO?$/, '$1');
+  const classify = (code) => PSMarkets.suffixOf(code)?.market ?? CODE_RULES.find(([re]) => re.test(code))?.[1] ?? null;
 
   const keyOf = (w) => `${w.market}:${w.code}`;
   const has = (list, w) => list.some((x) => keyOf(x) === keyOf(w));
@@ -101,26 +106,34 @@ globalThis.PSPrefs ??= (() => {
 
   // ---------- 設定 → 畫面上的列 ----------
 
-  // 自選股 → 要抓的項目。每個市場怎麼組代號、歸哪個抓取群組，查表決定
+  // 自選股 → 要抓的項目。每個市場怎麼組代號、歸哪個抓取群組，查表決定；表裡沒有的市場都是其他國家個股（gl）
   const WATCH = {
     tw: (w) => ({ symbol: `${w.ex}_${w.code}`, group: 'tw' }),
     us: (w) => ({ symbol: w.code, group: 'us' }),
+    gl: (w) => ({ symbol: w.code, group: 'gl', delay: PSMarkets.suffixOf(w.code)?.delay ?? 0 }),
   };
+  const isGlobal = (i) => i.group === 'gl';
 
   // 要抓的項目＝自選股＋開著的指數。
   // item = { key, market, group, symbol, nameKey?（指數，i18n key）, code?、label?（自選股：代號、新增時查到的名稱） }
   function items(p) {
-    const stocks = p.watchlist.map((w) => ({ key: keyOf(w), market: w.market, code: w.code, label: w.name, ...WATCH[w.market](w) }));
+    const stocks = p.watchlist.map((w) => ({ key: keyOf(w), market: w.market, code: w.code, label: w.name, ...(WATCH[w.market] ?? WATCH.gl)(w) }));
     return [...stocks, ...PSMarkets.INDICES.filter((i) => p.indices[i.symbol])];
   }
 
   // 列上顯示什麼、滑鼠提示顯示什麼：美股記代號（名稱太長），台股記名稱（中文名稱短）；指數用我們的名稱。
   // tr：查翻譯的函式（介面傳 PSI18n.t 進來；這裡不碰 i18n，測試可以傳別的）
+  // 其他國家個股和美股一樣顯示代號，提示是「全名 · 地區 · 幣別」；單位是「分」的幣別（GBp 便士等）另外翻譯
+  const MINOR_CUR = ['GBp', 'ZAc', 'ILA'];
+  const curLabel = (cur, tr) => (MINOR_CUR.includes(cur) ? tr(`cur.${cur}`) : cur);
   const LABELS = {
     us: (item, quote) => [item.code, quote?.name ?? item.label ?? ''],
     tw: (item, quote) => [quote?.name ?? item.label ?? item.code, item.code],
+    gl: (item, quote, tr) => [item.code,
+      [quote?.name ?? item.label, tr(`mkt.${item.market}`), curLabel(quote?.cur, tr)].filter(Boolean).join(' · ')],
   };
-  const labelOf = (item, quote, tr = (k) => k) => (item.code ? LABELS[item.market](item, quote) : [tr(item.nameKey), '']);
+  const labelOf = (item, quote, tr = (k) => k) =>
+    (item.code ? (LABELS[item.market] ?? LABELS.gl)(item, quote, tr) : [tr(item.nameKey), '']);
 
   // ---------- 分頁 ----------
 
@@ -133,7 +146,8 @@ globalThis.PSPrefs ??= (() => {
     { id: 'all', nameKey: 'tab.all', has: () => true },
     { id: 'tw', nameKey: 'tab.tw', has: (i) => i.market === 'tw' },
     { id: 'us', nameKey: 'tab.us', has: (i) => i.market === 'us' },
-    { id: 'world', nameKey: 'tab.world', has: (i) => !['tw', 'us', ...ALT].includes(i.market) },
+    // 國際＝各國指數；其他國家個股只在「全部」（和自創分頁）出現
+    { id: 'world', nameKey: 'tab.world', has: (i) => !['tw', 'us', ...ALT].includes(i.market) && !isGlobal(i) },
     { id: 'alt', nameKey: 'tab.alt', has: isAlt },
   ];
   const customTab = (x) => ({ id: x.id, name: x.name, custom: true, has: (i) => x.keys.includes(i.key) });
@@ -147,24 +161,42 @@ globalThis.PSPrefs ??= (() => {
     return tabs.find((x) => x.id === p.tab) ?? tabs[0];
   };
 
-  // 分段：每個項目放進第一個符合的段；段內指數在前、自選股在後；空的段不出現
+  // 分段：每個項目放進第一個符合的段；段內指數在前、自選股在後；空的段不出現。
+  // 其他國家個股（gl）接在美股後面，每個國家一段（港股、日股…，i18n 的 stk.＋市場），照自選清單裡第一次出現的順序
+  // market：段標題旁要標哪個市場的狀態（盤中、休市…）；國際指數是好幾個國家、加密貨幣 24 小時，不標
   const SECTIONS = [
-    { id: 'tw', titleKey: 'sec.tw', has: (i) => i.market === 'tw' },
-    { id: 'us', titleKey: 'sec.us', has: (i) => i.market === 'us' },
+    { id: 'tw', titleKey: 'sec.tw', market: 'tw', has: (i) => i.market === 'tw' },
+    { id: 'us', titleKey: 'sec.us', market: 'us', has: (i) => i.market === 'us' },
+    { id: 'gl', has: isGlobal },
     { id: 'world', titleKey: 'sec.world', has: (i) => !isAlt(i) },
     { id: 'alt', titleKey: 'sec.alt', has: isAlt },
   ];
   const isIndex = (i) => i.key.startsWith('idx:');
+  const byCountry = (items) => [...new Set(items.map((i) => i.market))]
+    .map((m) => ({ id: `gl.${m}`, titleKey: `stk.${m}`, market: m, items: items.filter((i) => i.market === m) }));
 
-  function sections(list) {
-    const groups = SECTIONS.map((s) => ({ id: s.id, titleKey: s.titleKey, items: [] }));
+  // 排序：指數固定在上面（當大盤參考），只排自選股；還沒有漲跌的排最後
+  const SORTS = { manual: null, up: (a, b) => b - a, down: (a, b) => a - b };
+  const SORT_ORDER = Object.keys(SORTS);
+  const nextSort = (mode) => SORT_ORDER[(SORT_ORDER.indexOf(mode) + 1) % SORT_ORDER.length];
+  function sortStocks(items, quotes, mode) {
+    const cmp = SORTS[mode];
+    if (!cmp) return items;
+    const pct = (i) => quotes[i.key]?.pct;
+    return [...items].sort((a, b) => (pct(a) == null) - (pct(b) == null) || cmp(pct(a) ?? 0, pct(b) ?? 0));
+  }
+
+  // quotes、sort 只有排序時用得到（不傳＝自選順序）
+  function sections(list, quotes = {}, sort = 'manual') {
+    const groups = SECTIONS.map((s) => ({ id: s.id, titleKey: s.titleKey, market: s.market, items: [] }));
     list.forEach((i) => groups[SECTIONS.findIndex((s) => s.has(i))].items.push(i));
-    groups.forEach((g) => { g.items = [...g.items.filter(isIndex), ...g.items.filter((i) => !isIndex(i))]; });
-    return groups.filter((g) => g.items.length);
+    // 先分國家（照自選順序）再排序，國家段的順序才不會跟著漲跌變
+    return groups.flatMap((g) => (g.id === 'gl' ? byCountry(g.items) : [g])).filter((g) => g.items.length)
+      .map((g) => ({ ...g, items: [...g.items.filter(isIndex), ...sortStocks(g.items.filter((i) => !isIndex(i)), quotes, sort)] }));
   }
 
   return {
-    DEFAULT, WATCH_MAX, TAB_MAX, TAB_NAME_MAX, BUILTIN_TABS, merge, load, update, watch, items, sections, labelOf,
+    DEFAULT, WATCH_MAX, TAB_MAX, TAB_NAME_MAX, BUILTIN_TABS, MINOR_CUR, SORT_ORDER, nextSort, merge, load, update, watch, items, sections, labelOf,
     normalize, classify, keyOf, has, isFull, addWatch, removeWatch, moveWatch,
     visibleTabs, currentTab, tabError, addTab, renameTab, removeTab, moveTab, setInTab, forgetKey,
   };

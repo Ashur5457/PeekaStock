@@ -72,7 +72,9 @@ function fakeFetch(url) {
   if (url.includes('mis.twse.com.tw')) {
     return Promise.resolve(reply({ ...sample('mis.json'), msgArray: [...sample('mis.json').msgArray, ...sample('mis-index.json').msgArray] }));
   }
-  if (url.includes('/v7/finance/spark')) return Promise.resolve(reply(sample('yahoo-spark-v7.json')));
+  if (url.includes('/v7/finance/spark')) {   // 美股、指數和其他國家個股放在同一個回應裡（parseSpark 只留這次問的代號）
+    return Promise.resolve(reply({ spark: { result: ['yahoo-spark-v7.json', 'yahoo-spark-global.json'].flatMap((f) => sample(f).spark.result) } }));
+  }
   if (url.includes('/v8/finance/chart')) return Promise.resolve(reply(sample('yahoo-chart.json')));
   return Promise.resolve(reply('<html>?</html>'));
 }
@@ -99,6 +101,7 @@ load('prefs.js');
 load('sources.js');
 load('schedule.js');
 load('alerts.js');
+load('panel.js');   // 只用到它的 HELP 表（使用說明）；畫面要到 create() 才建立
 const { isOpen, INDICES } = PSMarkets;
 const { parseMis, parseSpark, SOURCES } = PSSources;
 
@@ -126,7 +129,9 @@ await test('同一句的 {變數} 在六種語言都一樣', () => {
 await test('畫面和程式裡寫死的 key 都存在（data-i18n、t(\'…\')）', () => {
   const used = ['overlay.js', 'panel.js', 'popout.html', 'popout.js'].flatMap((f) => [
     ...src(f).matchAll(/data-i18n(?:-title|-placeholder)?="([^"$]+)"/g), ...src(f).matchAll(/\bt\('([^']+)'/g),
-    ...src(f).matchAll(/'(help\.\w+|tag\.\w+)'/g),   // 使用說明（panel.js 的 HELP 表）
+    ...src(f).matchAll(/'(tag\.\w+)'/g),   // 使用說明（panel.js 的 HELP 表）的「買」標記
+    ...(f === 'panel.js' ? PSPanel.HELP.flatMap((g) => [`hg.${g.id}`, `hg.${g.id}Sum`, ...g.items.flatMap(([, n]) => [`hs.${n}`, `help.${n}`])]).map((k) => [, k]) : []),
+    ...['help.more', 'help.readme'].map((k) => [, k]),
   ].map((m) => m[1]));
   assert.ok(used.length > 30, `只找到 ${used.length} 個`);
   used.forEach((k) => assert.ok(STRINGS[k], `少了 ${k}`));
@@ -217,11 +222,22 @@ await test('關掉的指數不出現；舊設定沒有新指數也會補上預�
 
 console.log('\n自選清單（prefs.js 純函式）');
 const { classify, normalize, addWatch, removeWatch, moveWatch, has, isFull, keyOf, sections, items: itemsOf } = PSPrefs;
-await test('代號格式：台股數字／ETF、美股英文；亂打的擋下', () => {
+await test('代號格式：台股數字／ETF、美股英文、其他國家帶後綴；亂打的擋下', () => {
   const cases = { 2330: 'tw', '00878': 'tw', '00631L': 'tw', 6488: 'tw', AAPL: 'us', 'BRK-B': 'us', 'BRK.B': 'us',
-    '': null, 123: null, 1234567: null, '2330.TW': null, 'AB$': null, '2AB': null };
+    '2330.TW': 'tw', '6488.two': 'tw', '7203.T': 'jp', '0700.hk': 'hk', '005930.KS': 'kr', '600519.SS': 'cn', 'SHEL.L': 'uk',
+    'VOLV-B.ST': 'se', 'RY.TO': 'ca', 'RELIANCE.NS': 'in', '2222.SR': 'sa',
+    '': null, 123: null, 1234567: null, 'AB$': null, '2AB': null, '7203.XX': null, '.T': null };
   Object.entries(cases).forEach(([raw, want]) => assert.equal(classify(normalize(raw)), want, raw));
   assert.equal(normalize('  aapl '), 'AAPL');
+  assert.equal(normalize('2330.tw'), '2330');
+});
+await test('後綴表：每個地區都在市場表（有時區），也都有六語名稱', () => {
+  Object.entries(PSMarkets.SUFFIX).forEach(([sfx, s]) => {
+    assert.ok(PSMarkets.MARKETS[s.market]?.tz, sfx);
+    assert.ok(STRINGS[`mkt.${s.market}`], `mkt.${s.market}`);
+    assert.equal(typeof s.delay, 'number', sfx);
+  });
+  assert.ok(Object.keys(PSMarkets.SUFFIX).length >= 40);
 });
 const W = (code, market = 'tw', ex = 'tse') => (market === 'tw' ? { market, code, ex } : { market, code });
 await test('新增：加在最後；已有的不重複加；滿 100 檔不加', () => {
@@ -271,6 +287,40 @@ await test('美股顯示代號（全名放提示）、台股顯示名稱（代�
   assert.deepEqual(labelOf(by['tw:2330'], undefined), ['2330', '2330']);   // 還沒有報價也沒有查到名稱
   assert.deepEqual(labelOf(by['idx:tse_t00'], { name: '發行量加權股價指數' }, PSI18n.t), ['加權指數', '']);
   assert.deepEqual(labelOf(by['idx:tse_t00'], undefined), ['idx.tse_t00', '']);   // 沒給翻譯函式就是 key
+});
+const glPrefs = PSPrefs.merge({ watchlist: [...PSPrefs.DEFAULT.watchlist, { market: 'jp', code: '7203.T', name: 'Toyota' }, { market: 'uk', code: 'SHEL.L' }] });
+const glItems = itemsOf(glPrefs);
+const toyota = glItems.find((i) => i.key === 'jp:7203.T');
+await test('其他國家個股：抓取群組 gl、代號照抄、延遲來自後綴表', () => {
+  assert.deepEqual([toyota.group, toyota.symbol, toyota.delay, toyota.market], ['gl', '7203.T', 900, 'jp']);
+  assert.equal(glItems.find((i) => i.key === 'uk:SHEL.L').delay, 900);
+});
+await test('其他國家個股：接在美股後面，每個國家一段（日股、英股…），照自選清單的順序', () => {
+  const secs = sections(glItems);
+  assert.deepEqual(secs.map((s) => s.id), ['tw', 'us', 'gl.jp', 'gl.uk', 'world', 'alt']);
+  assert.deepEqual(secs.map((s) => PSI18n.t(s.titleKey)).slice(2, 4), ['日股', '英股']);
+  assert.deepEqual(secs.find((s) => s.id === 'gl.jp').items.map((i) => i.key), ['jp:7203.T']);
+  const later = itemsOf({ ...glPrefs, watchlist: [...glPrefs.watchlist].reverse() });
+  assert.deepEqual(sections(later).map((s) => s.id).filter((id) => id.startsWith('gl.')), ['gl.uk', 'gl.jp']);
+});
+await test('其他國家個股只在「全部」分頁，不在「國際」（國際只有指數）、台股、美股分頁', () => {
+  const tab = (id) => PSPrefs.BUILTIN_TABS.find((x) => x.id === id);
+  assert.ok(tab('all').has(toyota));
+  ['world', 'tw', 'us', 'alt'].forEach((id) => assert.ok(!tab(id).has(toyota), id));
+  assert.ok(tab('world').has(glItems.find((i) => i.key === 'idx:^N225')));
+});
+await test('每個國家都有股市段標題（港股、日股…）六語', () => {
+  new Set(Object.values(PSMarkets.SUFFIX).map((s) => s.market)).forEach((m) => assert.ok(STRINGS[`stk.${m}`], `stk.${m}`));
+  assert.equal(PSI18n.t('stk.hk'), '港股');
+  assert.ok(STRINGS['grp.gl']);
+});
+await test('其他國家個股顯示代號；提示是「全名 · 地區 · 幣別」，單位是「分」的幣別另外說明', () => {
+  const tr = PSI18n.t;
+  assert.deepEqual(PSPrefs.labelOf(toyota, { name: 'TOYOTA MOTOR', cur: 'JPY' }, tr), ['7203.T', 'TOYOTA MOTOR · 日本 · JPY']);
+  assert.deepEqual(PSPrefs.labelOf(toyota, null, tr), ['7203.T', 'Toyota · 日本']);
+  const shell = glItems.find((i) => i.key === 'uk:SHEL.L');
+  assert.equal(PSPrefs.labelOf(shell, { name: 'Shell', cur: 'GBp' }, tr)[1], 'Shell · 英國 · 便士（GBp）');
+  PSPrefs.MINOR_CUR.forEach((c) => assert.ok(STRINGS[`cur.${c}`], c));
 });
 await test('內建分頁：全部／台股／美股／國際；沒東西的內建分頁不顯示，自創分頁就算空的也顯示', () => {
   const list = itemsOf(PSPrefs.DEFAULT);
@@ -388,6 +438,20 @@ await test('美股和指數都解析出來，時間是毫秒', () => {
   assert.ok(!/\s{2}/.test(by['us:AAPL'].name), '名稱裡的連續空白要收掉');
 });
 
+const glJson = sample('yahoo-spark-global.json');
+await test('其他國家個股解析（真實樣本）：價格、幣別、交易時段（毫秒）', () => {
+  const items = ['7203.T', '0700.HK', 'SHEL.L', 'RY.TO'].map((code) => ({ key: code, symbol: code }));
+  const by = Object.fromEntries(parseSpark(glJson, 1, items).map((q) => [q.key, q]));
+  assert.deepEqual(Object.keys(by).sort(), ['0700.HK', '7203.T', 'RY.TO', 'SHEL.L']);
+  assert.deepEqual([by['7203.T'].cur, by['SHEL.L'].cur, by['RY.TO'].cur], ['JPY', 'GBp', 'CAD']);
+  Object.values(by).forEach((q) => {
+    assert.ok(q.price > 0 && q.prev > 0, q.key);
+    assert.ok(q.period[0] > 1e12 && q.period[1] > q.period[0], q.key);
+  });
+  assert.equal(parseSpark({ spark: { result: [{ symbol: 'X', response: [{ meta: { regularMarketPrice: 1 } }] }] } }, 1,
+    [{ key: 'X', symbol: 'X' }])[0].period, null);   // 沒有時段資料 → null
+});
+
 console.log('\n來源函式（假 fetch）');
 await test('mis()：一個請求、代號用 %7C 串起來', async () => {
   calls.length = 0;
@@ -450,6 +514,100 @@ await test('連續失敗 2 次 → 間隔變 4 倍；最多 5 分鐘', () => {
   const plan = { every: 5000 };
   assert.equal(PSSchedule.waitOf(plan, { fails: 2 }), 20000);
   assert.equal(PSSchedule.waitOf(plan, { fails: 20 }), PSSchedule.MAX_WAIT);
+});
+
+const H = 3600 * 1000;
+const opening = { period: [AT.usOpen - H, AT.usOpen + 5 * H] };   // 交易時段包住 AT.usOpen
+await test('沒有時段表的市場（加拿大）：看報價附的交易時段；還沒有報價 → 當作休市', () => {
+  assert.equal(PSMarkets.byQuote('ca'), true);
+  assert.equal(PSMarkets.byQuote('jp'), false);
+  assert.equal(isOpen('ca', AT.usOpen, opening), true);
+  assert.equal(isOpen('ca', AT.usOpen - 2 * H, opening), false);
+  assert.equal(isOpen('ca', AT.usOpen + 5 * H, opening), false);
+  assert.equal(isOpen('ca', AT.usOpen, null), false);
+  assert.equal(isOpen('ca', AT.usOpen, {}), false);
+});
+await test('來源延遲 15 分：收盤後再算 15 分鐘才收（才拿得到收盤價）', () => {
+  const jst = (h, m) => Date.UTC(2026, 9, 28, h - 9, m);   // 東京 15:30 收盤
+  assert.equal(isOpen('jp', jst(15, 40)), false);
+  assert.equal(isOpen('jp', jst(15, 40), null, 900), true);
+  assert.equal(isOpen('jp', jst(15, 46), null, 900), false);
+  assert.equal(isOpen('ca', AT.usOpen + 5 * H + 10 * 60000, opening, 900), true);
+});
+await test('其他國家個股排程：盤中抓；休市且 30 分鐘內抓過 → 不抓；超過 30 分鐘再問一次', () => {
+  const item = { key: 'ca:RY.TO', market: 'ca', group: 'gl', delay: 0 };
+  const plans = [{ id: 'gl', every: 30000, source: 'spark', items: [item] }];
+  const at = AT.usOpen + 8 * H;   // 收盤後
+  const q = (fetchedAt) => ({ [item.key]: { ...opening, fetchedAt } });
+  assert.equal(PSSchedule.due(plans, AT.usOpen, {}, q(AT.usOpen - 60000)).length, 1);
+  assert.equal(PSSchedule.due(plans, at, {}, q(at - 5 * 60000)).length, 0);
+  assert.equal(PSSchedule.due(plans, at, {}, q(at - PSSchedule.REFRESH)).length, 1);
+  assert.equal(PSSchedule.due(plans, at, {}, {}).length, 1);   // 還沒有報價
+  // 有時段表的市場（日本）休市時不會每 30 分鐘再問
+  const jpItem = { key: 'jp:7203.T', market: 'jp', group: 'gl', delay: 900 };
+  assert.equal(PSSchedule.due([{ ...plans[0], items: [jpItem] }], AT.saturday, {}, { [jpItem.key]: { fetchedAt: 0 } }).length, 0);
+});
+
+console.log('\n走勢線、市場狀態、排序');
+const TPE = (h, m, d = 28) => Date.UTC(2026, 9, d, h - 8, m);   // 台北時間 → UTC 毫秒
+const NY = (h, m) => Date.UTC(2026, 9, 28, h + 4, m);            // 紐約（夏令時間）→ UTC 毫秒
+await test('一天的交易時段：台股 09:00～13:30、東京 09:00～15:30（含午休）；週末和沒寫時段的市場 → null', () => {
+  assert.deepEqual(PSMarkets.dayRange('tw', TPE(11, 0)), [TPE(9, 0), TPE(13, 30)]);
+  assert.deepEqual(PSMarkets.dayRange('tw', TPE(20, 0)), [TPE(9, 0), TPE(13, 30)]);   // 收盤後還是當天的時段
+  assert.deepEqual(PSMarkets.dayRange('jp', TPE(11, 0)), [TPE(8, 0), TPE(14, 30)]);
+  assert.equal(PSMarkets.dayRange('tw', AT.saturday), null);
+  assert.equal(PSMarkets.dayRange('ca', AT.usOpen), null);
+});
+await test('市場狀態：盤中、午休、盤前、盤後、休市；沒寫時段的市場看報價的時段', () => {
+  const { phase } = PSMarkets;
+  assert.equal(phase('tw', TPE(9, 30)), 'open');
+  assert.equal(phase('tw', TPE(14, 0)), 'closed');
+  assert.equal(phase('jp', TPE(10, 45)), 'break');    // 東京 11:45 午休
+  assert.equal(phase('jp', TPE(15, 0)), 'closed');    // 東京 16:00
+  assert.equal(phase('us', NY(8, 0)), 'pre');
+  assert.equal(phase('us', NY(10, 42)), 'open');
+  assert.equal(phase('us', NY(17, 0)), 'post');
+  assert.equal(phase('us', NY(21, 0)), 'closed');
+  assert.equal(phase('tw', AT.saturday), 'closed');
+  assert.equal(phase('ca', AT.usOpen, opening), 'open');
+  assert.equal(phase('ca', AT.usOpen + 8 * H, opening), 'closed');
+  ['open', 'break', 'pre', 'post', 'closed'].forEach((s) => assert.ok(STRINGS[`st.${s}`], s));
+});
+await test('走勢線（真實樣本）：spark 的每 5 分鐘收盤價存成 [[秒, 價格]…]，空的那 5 分鐘跳過', () => {
+  const items = ['VOLV-B.ST', 'RY.TO'].map((code) => ({ key: code, symbol: code }));
+  const by = Object.fromEntries(parseSpark(glJson, 1, items).map((q) => [q.key, q]));
+  const raw = glJson.spark.result.find((r) => r.symbol === 'VOLV-B.ST').response[0];
+  assert.equal(by['VOLV-B.ST'].line.length, raw.indicators.quote[0].close.filter((v) => v != null).length);
+  assert.ok(by['RY.TO'].line.every(([ts, v]) => ts > 1.7e9 && v > 0));
+});
+await test('走勢線的橫軸：有時段表用當天時段；沒有的用 Yahoo 時段（換到下一天就不用）；都沒有就畫滿', () => {
+  const line = [[TPE(9, 5) / 1000, 1], [TPE(10, 0) / 1000, 2]];
+  assert.deepEqual(PSMarkets.lineDomain('tw', { line }), [TPE(9, 0), TPE(13, 30)]);
+  const caLine = [[(AT.usOpen - 30 * 60000) / 1000, 1], [AT.usOpen / 1000, 2]];
+  assert.deepEqual(PSMarkets.lineDomain('ca', { line: caLine, ...opening }), opening.period);
+  const nextDay = { period: [AT.usOpen + 20 * H, AT.usOpen + 26 * H] };
+  assert.deepEqual(PSMarkets.lineDomain('ca', { line: caLine, ...nextDay }), [AT.usOpen - 30 * 60000, AT.usOpen]);
+  assert.equal(PSMarkets.lineDomain('ca', { line: [] }), null);
+});
+await test('排序：漲幅大到小、跌幅大到小；指數固定在段的最上面；還沒有漲跌的排最後；段的順序不變', () => {
+  const list = itemsOf(PSPrefs.merge({ watchlist: [W('2330'), W('2317'), W('2454'), W('AAPL', 'us'), W('NVDA', 'us')] }));
+  const quotes = { 'tw:2330': { pct: 1 }, 'tw:2317': { pct: -2 }, 'us:AAPL': { pct: -1 }, 'us:NVDA': { pct: 3 } };
+  const order = (sort) => sections(list, quotes, sort).slice(0, 2).map((s) => s.items.map((i) => i.key.replace(/^\w+:/, '')));
+  assert.deepEqual(order('manual')[0], ['tse_t00', 'otc_o00', '2330', '2317', '2454']);
+  assert.deepEqual(order('up')[0], ['tse_t00', 'otc_o00', '2330', '2317', '2454']);
+  assert.deepEqual(order('down')[0], ['tse_t00', 'otc_o00', '2317', '2330', '2454']);
+  assert.deepEqual(order('up')[1].slice(-2), ['NVDA', 'AAPL']);
+  assert.deepEqual(sections(list, quotes, 'down').map((s) => s.id), sections(list).map((s) => s.id));
+  const glQuotes = { 'jp:7203.T': { pct: -3 }, 'uk:SHEL.L': { pct: 2 } };   // 國家段照自選順序（日股在英股前），不跟著漲跌換
+  ['up', 'down'].forEach((m) => assert.deepEqual(sections(glItems, glQuotes, m).map((s) => s.id).slice(2, 4), ['gl.jp', 'gl.uk'], m));
+  assert.deepEqual(['manual', 'up', 'down'].map(PSPrefs.nextSort), ['up', 'down', 'manual']);
+});
+await test('新設定的預設值：走勢線開、漲跌顯示％、自選順序；段帶市場（標狀態用）', () => {
+  assert.deepEqual([PSPrefs.DEFAULT.line, PSPrefs.DEFAULT.chgMode, PSPrefs.DEFAULT.sort], [true, 'pct', 'manual']);
+  assert.equal(PSPrefs.merge({ stealth: true }).sort, 'manual');
+  const secs = sections(glItems);
+  assert.deepEqual(secs.map((s) => s.market ?? null), ['tw', 'us', 'jp', 'uk', null, null]);
+  PSPrefs.SORT_ORDER.forEach((m) => ['sort', 'sortBtn'].forEach((k) => assert.ok(STRINGS[`${k}.${m}`], `${k}.${m}`)));
 });
 
 console.log('\n提醒（alerts.js）');
@@ -618,6 +776,16 @@ await test('Yahoo 的期貨固定晚 10 分鐘：變灰的門檻要放寬；加�
   assert.equal(of('BTC-USD').delay, 0);
   assert.equal(of('BTC-USD').group, 'crypto');
 });
+await test('延遲的國際指數：記下延遲（日經 15 分、KOSPI 20 分、美國指數 0）；收盤後再抓到延遲結束', () => {
+  const of = (sym) => INDICES.find((i) => i.symbol === sym);
+  assert.deepEqual(['^N225', '^KS11', '^GDAXI', '^GSPC', 'tse_t00'].map((s) => of(s).delay), [900, 1200, 900, 0, 0]);
+  const n225 = of('^N225');
+  const plans = [{ id: 'idx', every: 30000, source: 'spark', items: [n225] }];
+  const have = { [n225.key]: { fetchedAt: 0 } };
+  const jst = (h, m) => Date.UTC(2026, 9, 28, h - 9, m);   // 東京 15:30 收盤
+  assert.equal(PSSchedule.due(plans, jst(15, 40), {}, have).length, 1);   // 15:40 還在抓 15:25 的資料
+  assert.equal(PSSchedule.due(plans, jst(15, 50), {}, have).length, 0);
+});
 const { parseChart } = PSSources;
 const CHART = sample('yahoo-chart.json');
 const AAPL = { key: 'us:AAPL', market: 'us', symbol: 'AAPL', code: 'AAPL' };
@@ -757,7 +925,17 @@ await test('查代號：美股 aapl → AAPL；找不到、格式錯都回原因
   assert.equal(typeof r.found.name, 'string');
   assert.deepEqual(await ask({ cmd: 'lookup', code: '9999' }), { error: 'notFound' });
   assert.deepEqual(await ask({ cmd: 'lookup', code: 'ZZZZQ' }), { error: 'notFound' });
-  assert.deepEqual(await ask({ cmd: 'lookup', code: '2330.TW' }), { error: 'format' });
+  assert.deepEqual(await ask({ cmd: 'lookup', code: '7203.XX' }), { error: 'format' });
+  assert.equal((await ask({ cmd: 'lookup', code: '2330.TW' })).found.code, '2330');   // Yahoo 的台股代號也收
+});
+await test('查代號：其他國家個股問 Yahoo spark 一次，市場由後綴決定', async () => {
+  calls.length = 0;
+  const r = await ask({ cmd: 'lookup', code: '7203.t' });
+  assert.deepEqual([r.found.market, r.found.code], ['jp', '7203.T']);
+  assert.ok(r.found.name.length > 0);
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].includes('/v7/finance/spark') && calls[0].includes('7203.T'), calls[0]);
+  assert.deepEqual(await ask({ cmd: 'lookup', code: '9999.T' }), { error: 'notFound' });
 });
 await test('查代號：網路錯誤 → 回錯誤訊息，不會卡住', async () => {
   globalThis.fetch = () => Promise.resolve(reply({}, 500));
@@ -809,6 +987,37 @@ await test('盤前時段：只多抓自選美股（指數不抓），價格標 p
   calls.length = 0;
   await tickOnce();
   assert.equal(calls.filter((u) => u.includes('/v8/finance/chart')).length, 0);
+});
+await test('自選了其他國家個股：tick 多抓 gl 群組（spark），報價帶幣別和交易時段', async () => {
+  await chrome.storage.local.set({ prefs: glPrefs });
+  Object.keys(state).forEach((k) => { state[k].last = 0; });
+  calls.length = 0;
+  await tickOnce();
+  const gl = calls.filter((u) => u.includes('7203.T'));
+  assert.equal(gl.length, 1);
+  assert.ok(gl[0].includes('SHEL.L') && gl[0].includes('/v7/finance/spark'), gl[0]);
+  assert.equal(session.quotes['jp:7203.T'].cur, 'JPY');
+  assert.ok(session.quotes['uk:SHEL.L'].period);
+  assert.ok(session.status.gl.ok);
+  await chrome.storage.local.set({ prefs: PSPrefs.merge({}) });
+});
+await test('台股走勢線：每次抓到的價格接起來；時間沒變不重複、換日重來、最多 600 點', () => {
+  const q = (h, m, price, d) => ({ key: 'tw:2330', price, time: TPE(h, m, d) });
+  let line = growLine(undefined, q(9, 1, 100));
+  line = growLine({ line }, q(9, 2, 101));
+  line = growLine({ line }, q(9, 2, 102));   // 同一個資料時間 → 不加
+  assert.deepEqual(line.map(([, v]) => v), [100, 101]);
+  assert.deepEqual(growLine({ line }, q(9, 1, 100, 29)).map(([, v]) => v), [100]);   // 隔天 → 重來
+  const long = Array.from({ length: 600 }, (_, i) => [TPE(9, 0) / 1000 + i, 1]);
+  assert.equal(growLine({ line: long }, q(13, 0, 2)).length, 600);
+  assert.equal(growLine({ line }, { price: null, time: 1 }), line);
+});
+await test('tick：台股的走勢線存進 storage.session；美股用 spark 附的走勢', async () => {
+  Object.keys(state).forEach((k) => { state[k].last = 0; });
+  delete session.quotes;
+  await tickOnce();
+  assert.equal(session.quotes['tw:2330'].line.length, 1);
+  assert.ok(Array.isArray(session.quotes['us:AAPL'].line));
 });
 await test('背景提醒：打開才設鬧鐘；鬧鐘響時框藏著也抓，但只抓有設提醒的', async () => {
   assert.equal(alarms.bgAlert, undefined);
