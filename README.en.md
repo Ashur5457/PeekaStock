@@ -38,7 +38,8 @@ I wanted to glance at the market during work, but a trading app is too conspicuo
 - **Stocks from other markets**: type the Yahoo Finance code with its exchange suffix (`7203.T` Tokyo, `0700.HK` Hong Kong, `SHEL.L` London, `RY.TO` Canada, …). About 40 exchanges are supported; they appear in the All tab, one section per country (Hong Kong stocks, Japan stocks, …).
 - **Tabs**: `All | Taiwan | US | World`, plus your own tabs (e.g. "Tech", "Dividend"). A stock can be in several tabs.
 - **World indices**: 16 indices from Taiwan, US, China, Hong Kong, Japan, Korea, Singapore, UK, France and Germany, each can be turned on or off.
-- **Crypto and futures**: Bitcoin, Ethereum, gold, silver and crude oil, in their own "Crypto/Futures" tab; each can be turned on or off.
+- **Crypto and futures**: Bitcoin, Ethereum, US index futures (S&P, Nasdaq, Dow), gold, silver and crude oil, in their own "Crypto/Futures" tab; each can be turned on or off. There is no free data for the US overnight session, so the index futures show where US stocks are heading at night.
+- **TAIEX futures, night session included**: the Taiwan section gets a row for the front-month TAIEX futures contract; it switches between the day and night sessions by itself, marks night prices "Night", and rolls to the next month automatically.
 - **US pre-market and after-hours**: during those sessions your US stocks (first 20) show the latest price tagged "Pre" or "Post", measured from the last close. These prices do not trigger alerts.
 - **Mini window ⧉**: press ⧉, then "Open mini window", and quotes float above the desktop, folders, Excel and Word, always on top. Chrome must stay running; you can minimize the host window but not close it.
 - **Sparklines, sorting, market status**: a small chart next to each name shows today's trend (dashed = previous close; Taiwan only while the box is open); click the change column to switch % / points; "⇅ Sort" at the right of the tabs switches to gainers or losers first; each section title shows Pre-market / Open / Lunch break / After hours / Closed.
@@ -50,13 +51,14 @@ I wanted to glance at the market during work, but a trading app is too conspicuo
 | Item | Source | Measured delay (Oct 2026) |
 |---|---|---|
 | Taiwan stocks, TAIEX, TPEx Index | TWSE "Market Information System" (MIS) | a few seconds to 2 minutes |
+| TAIEX futures (day and night sessions) | TAIFEX quote page (MIS) | a few seconds |
 | US stocks, Dow Jones, S&P 500, Nasdaq, PHLX Semiconductor | Yahoo Finance | a few seconds |
 | Shanghai, Shenzhen, CSI 300, Hang Seng, Nikkei, STI, FTSE, CAC, DAX | Yahoo Finance | about 15 minutes |
 | KOSPI | Yahoo Finance | about 20 minutes |
 | Stocks from other markets (about 40 exchanges) | Yahoo Finance | mostly 15–20 minutes; Canada, Sweden, Finland a few seconds |
 | US pre-market and after-hours | Yahoo Finance | seconds to about 1 minute (updated every 30 s) |
 | Bitcoin, Ethereum | Yahoo Finance | seconds |
-| Gold, silver, crude oil (futures) | Yahoo Finance | about 10 minutes |
+| US index futures, gold, silver, crude oil | Yahoo Finance | about 10 minutes |
 
 - Every row shows its **data time**; intraday rows older than 2 minutes turn gray, so you can see what is stale.
 - Taiwan stocks often have no trade price during the session; PeekaStock then shows the best bid (or ask) and marks it "Bid"/"Ask".
@@ -66,6 +68,7 @@ I wanted to glance at the market during work, but a trading app is too conspicuo
 flowchart LR
   BOX["Box on a visible tab<br/>tick every 5 s"] --> SW["Background sw.js<br/>schedule: only while open"]
   SW --> MIS["TWSE MIS<br/>Taiwan (every 5 s)"]
+  SW --> TF["TAIFEX MIS<br/>TAIEX futures (every 5 s)"]
   SW --> YF["Yahoo Finance<br/>US stocks (5 s), indices & stocks (30 s)"]
   MIS --> ST["chrome.storage.session"]
   YF --> ST
@@ -126,12 +129,12 @@ Click the puzzle button 🧩 in the toolbar and pin PeekaStock (clicking the ico
 Chrome warns that PeekaStock can "read and change all your data on all websites". That is because the box has to be drawn on **every page**, so its script must be injected into every page.
 
 - The box only draws quotes. It **does not read or collect page content**.
-- It connects to exactly two sites: `mis.twse.com.tw` (Taiwan Stock Exchange) and `query1.finance.yahoo.com` (Yahoo Finance).
+- It connects to exactly three sites: `mis.twse.com.tw` (Taiwan Stock Exchange), `mis.taifex.com.tw` (Taiwan Futures Exchange) and `query1.finance.yahoo.com` (Yahoo Finance).
 - It also uses the `alarms` permission, only when you turn on background alerts: it wakes the background script once a minute.
 
 ## ⚠️ Known limitations
 
-- **Both data sources are unofficial endpoints**: if TWSE or Yahoo change their format, quotes may stop; the box shows an error at the bottom.
+- **All data sources are unofficial endpoints**: if TWSE, TAIFEX or Yahoo change their format, quotes may stop; the box shows an error at the bottom.
 - **Public holidays are not handled**: on a holiday you see the previous session's close.
 - **US prices** are Nasdaq real-time prices from a single exchange, which can differ slightly from the consolidated price your broker shows.
 - **Non-US indices** are delayed 15–20 minutes on Yahoo itself.
@@ -143,12 +146,12 @@ Chrome warns that PeekaStock can "read and change all your data on all websites"
 ## 🔒 Privacy
 
 - **No data is collected** — no analytics, tracking or ads.
-- Only stock codes (e.g. `2330`, `AAPL`) are sent to TWSE and Yahoo, just as when you open their pages yourself.
+- Only stock codes (e.g. `2330`, `AAPL`) are sent to TWSE, TAIFEX and Yahoo, just as when you open their pages yourself.
 - Settings (watchlist, tabs, position, language) are stored in Chrome's local storage (`chrome.storage.local`); quotes are kept only in memory (`chrome.storage.session`) and cleared when the browser closes.
 
 ## 📜 Disclaimer
 
-PeekaStock only displays quotes and **is not investment advice**. Quotes may be delayed, wrong or unavailable; rely on your broker or the exchange. This project is not affiliated with the Taiwan Stock Exchange or Yahoo.
+PeekaStock only displays quotes and **is not investment advice**. Quotes may be delayed, wrong or unavailable; rely on your broker or the exchange. This project is not affiliated with the Taiwan Stock Exchange, the Taiwan Futures Exchange or Yahoo.
 
 ## 📂 Files
 

@@ -38,7 +38,8 @@ Quería echar un vistazo al mercado durante el trabajo, pero abrir una aplicaci�
 - **Acciones de otros mercados**: escribe el código de Yahoo Finanzas con el sufijo de la bolsa (`7203.T` Tokio, `0700.HK` Hong Kong, `SHEL.L` Londres, `RY.TO` Canadá…). Hay unas 40 bolsas; aparecen en la pestaña Todo, una sección por país (Acciones de Hong Kong, Acciones de Japón…).
 - **Pestañas**: `Todo | Taiwán | EE. UU. | Mundo`, más tus propias pestañas (p. ej. «Tecnología», «Dividendos»). Una acción puede estar en varias pestañas.
 - **Índices mundiales**: 16 índices de Taiwán, EE. UU., China, Hong Kong, Japón, Corea, Singapur, Reino Unido, Francia y Alemania; cada uno se puede activar o desactivar.
-- **Cripto y futuros**: Bitcoin, Ethereum, oro, plata y petróleo, en su propia pestaña «Cripto/Futuros»; cada uno se activa por separado.
+- **Cripto y futuros**: Bitcoin, Ethereum, futuros de índices de EE. UU. (S&P, Nasdaq, Dow), oro, plata y petróleo, en su propia pestaña «Cripto/Futuros»; cada uno se activa por separado. No hay datos gratuitos de la sesión nocturna de EE. UU., así que por la noche los futuros de índices muestran hacia dónde va el mercado.
+- **Futuros TAIEX, con sesión nocturna**: la sección de Taiwán añade una fila con el contrato de futuros TAIEX más cercano; cambia sola entre la sesión diurna y la nocturna, marca los precios nocturnos como «Noche» y pasa al mes siguiente automáticamente.
 - **Preapertura y tras el cierre en EE. UU.**: en esos horarios tus acciones de EE. UU. (las 20 primeras) muestran el último precio con «Pre» o «Post», calculado desde el último cierre. Estos precios no activan alertas.
 - **Ventana mini ⧉**: pulsa ⧉ y luego «Abrir ventana mini», y las cotizaciones flotan sobre el escritorio, carpetas, Excel y Word, siempre encima. Chrome debe seguir abierto; puedes minimizar la ventana principal, pero no cerrarla.
 - **Minigráficos, orden y estado del mercado**: un minigráfico junto a cada nombre muestra la tendencia del día (discontinua = cierre anterior; Taiwán solo mientras la ventana está abierta); clic en la columna de cambio para % / puntos; «⇅ Orden» a la derecha de las pestañas ordena por subidas o bajadas; cada título muestra Preapertura / Abierto / Pausa / Tras el cierre / Cerrado.
@@ -50,13 +51,14 @@ Quería echar un vistazo al mercado durante el trabajo, pero abrir una aplicaci�
 | Elemento | Fuente | Retraso medido (oct. 2026) |
 |---|---|---|
 | Acciones de Taiwán, TAIEX, índice TPEx | Bolsa de Taiwán, «Market Information System» (MIS) | de unos segundos a 2 minutos |
+| Futuros TAIEX (sesión diurna y nocturna) | Bolsa de Futuros de Taiwán (MIS) | unos segundos |
 | Acciones de EE. UU., Dow Jones, S&P 500, Nasdaq, Semiconductores PHLX | Yahoo Finance | unos segundos |
 | Shanghái, Shenzhen, CSI 300, Hang Seng, Nikkei, Straits Times, FTSE, CAC, DAX | Yahoo Finance | unos 15 minutos |
 | KOSPI | Yahoo Finance | unos 20 minutos |
 | Acciones de otros mercados (unas 40 bolsas) | Yahoo Finance | casi todas 15–20 minutos; Canadá, Suecia y Finlandia unos segundos |
 | Preapertura y tras el cierre en EE. UU. | Yahoo Finance | de segundos a 1 minuto (cada 30 s) |
 | Bitcoin, Ethereum | Yahoo Finance | segundos |
-| Oro, plata, petróleo (futuros) | Yahoo Finance | unos 10 minutos |
+| Futuros de índices de EE. UU., oro, plata, petróleo | Yahoo Finance | unos 10 minutos |
 
 - Cada fila muestra la **hora del dato**; durante la sesión, los datos con más de 2 minutos se ven en gris.
 - Las acciones de Taiwán a menudo no tienen precio de operación durante la sesión; entonces se muestra la mejor compra (o venta), marcada con «C» o «V».
@@ -66,6 +68,7 @@ Quería echar un vistazo al mercado durante el trabajo, pero abrir una aplicaci�
 flowchart LR
   BOX["Ventana en una pestaña visible<br/>tick cada 5 s"] --> SW["Segundo plano sw.js<br/>solo con el mercado abierto"]
   SW --> MIS["Bolsa de Taiwán MIS<br/>Taiwán (cada 5 s)"]
+  SW --> TF["TAIFEX MIS<br/>Futuros TAIEX (cada 5 s)"]
   SW --> YF["Yahoo Finance<br/>EE. UU. (5 s), índices y acciones (30 s)"]
   MIS --> ST["chrome.storage.session"]
   YF --> ST
@@ -126,12 +129,12 @@ Pulsa el botón de pieza de puzle 🧩 de la barra y fija PeekaStock (el icono o
 Chrome avisa de que PeekaStock puede «leer y cambiar todos tus datos de todos los sitios web». Se debe a que la ventana se dibuja en **todas las páginas**, así que su script tiene que cargarse en todas ellas.
 
 - La ventana solo dibuja cotizaciones; **no lee ni recopila el contenido de las páginas**.
-- Solo se conecta a dos sitios: `mis.twse.com.tw` (Bolsa de Taiwán) y `query1.finance.yahoo.com` (Yahoo Finance).
+- Solo se conecta a tres sitios: `mis.twse.com.tw` (Bolsa de Taiwán), `mis.taifex.com.tw` (Bolsa de Futuros de Taiwán) y `query1.finance.yahoo.com` (Yahoo Finance).
 - También usa el permiso `alarms`, solo si activas las alertas en segundo plano: despierta el proceso en segundo plano una vez por minuto.
 
 ## ⚠️ Limitaciones conocidas
 
-- **Ambas fuentes son interfaces no oficiales**: si la Bolsa de Taiwán o Yahoo cambian el formato, las cotizaciones pueden dejar de llegar; la ventana muestra el error abajo.
+- **Todas las fuentes son interfaces no oficiales**: si la Bolsa de Taiwán, la de Futuros o Yahoo cambian el formato, las cotizaciones pueden dejar de llegar; la ventana muestra el error abajo.
 - **No se tienen en cuenta los festivos**: en un festivo verás el cierre de la sesión anterior.
 - **Los precios de EE. UU.** son precios en tiempo real de un único mercado (Nasdaq) y pueden diferir ligeramente del precio consolidado de tu bróker.
 - **Los índices fuera de EE. UU.** ya llegan con 15–20 minutos de retraso en Yahoo.
@@ -143,12 +146,12 @@ Chrome avisa de que PeekaStock puede «leer y cambiar todos tus datos de todos l
 ## 🔒 Privacidad
 
 - **No se recopila ningún dato**: sin estadísticas, rastreo ni anuncios.
-- A la Bolsa de Taiwán y a Yahoo solo se envían códigos de acciones (p. ej. `2330`, `AAPL`), igual que si abrieras sus páginas tú mismo.
+- A la Bolsa de Taiwán, a la de Futuros y a Yahoo solo se envían códigos de acciones (p. ej. `2330`, `AAPL`), igual que si abrieras sus páginas tú mismo.
 - Los ajustes (lista, pestañas, posición, idioma) se guardan en el almacenamiento local de Chrome (`chrome.storage.local`); las cotizaciones solo se guardan en memoria (`chrome.storage.session`) y se borran al cerrar el navegador.
 
 ## 📜 Aviso legal
 
-PeekaStock solo muestra cotizaciones y **no es asesoramiento de inversión**. Las cotizaciones pueden llegar con retraso, ser erróneas o no estar disponibles; guíate por tu bróker o por la bolsa. Este proyecto no tiene relación con la Bolsa de Taiwán ni con Yahoo.
+PeekaStock solo muestra cotizaciones y **no es asesoramiento de inversión**. Las cotizaciones pueden llegar con retraso, ser erróneas o no estar disponibles; guíate por tu bróker o por la bolsa. Este proyecto no tiene relación con la Bolsa de Taiwán, la Bolsa de Futuros de Taiwán ni con Yahoo.
 
 ## 📂 Archivos
 

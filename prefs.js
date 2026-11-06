@@ -139,15 +139,17 @@ globalThis.PSPrefs ??= (() => {
 
   const ALT = ['crypto', 'fut'];   // 加密貨幣、期貨：自己一個分頁，不算國際指數
   const isAlt = (i) => ALT.includes(i.market);
+  const TW = ['tw', 'txf'];   // 台指期跟著台股（台股分頁、台股段），不放「加密／期貨」
+  const isTw = (i) => TW.includes(i.market);
 
   // 內建分頁照市場自動分；自創分頁照 keys。每個分頁都只是「這個項目要不要放進來」。
   // 內建分頁的名稱是 i18n key（nameKey），自創分頁是使用者取的名稱（name）
   const BUILTIN_TABS = [
     { id: 'all', nameKey: 'tab.all', has: () => true },
-    { id: 'tw', nameKey: 'tab.tw', has: (i) => i.market === 'tw' },
+    { id: 'tw', nameKey: 'tab.tw', has: isTw },
     { id: 'us', nameKey: 'tab.us', has: (i) => i.market === 'us' },
     // 國際＝各國指數；其他國家個股只在「全部」（和自創分頁）出現
-    { id: 'world', nameKey: 'tab.world', has: (i) => !['tw', 'us', ...ALT].includes(i.market) && !isGlobal(i) },
+    { id: 'world', nameKey: 'tab.world', has: (i) => ![...TW, 'us', ...ALT].includes(i.market) && !isGlobal(i) },
     { id: 'alt', nameKey: 'tab.alt', has: isAlt },
   ];
   const customTab = (x) => ({ id: x.id, name: x.name, custom: true, has: (i) => x.keys.includes(i.key) });
@@ -165,7 +167,7 @@ globalThis.PSPrefs ??= (() => {
   // 其他國家個股（gl）接在美股後面，每個國家一段（港股、日股…，i18n 的 stk.＋市場），照自選清單裡第一次出現的順序
   // market：段標題旁要標哪個市場的狀態（盤中、休市…）；國際指數是好幾個國家、加密貨幣 24 小時，不標
   const SECTIONS = [
-    { id: 'tw', titleKey: 'sec.tw', market: 'tw', has: (i) => i.market === 'tw' },
+    { id: 'tw', titleKey: 'sec.tw', market: 'tw', has: isTw },
     { id: 'us', titleKey: 'sec.us', market: 'us', has: (i) => i.market === 'us' },
     { id: 'gl', has: isGlobal },
     { id: 'world', titleKey: 'sec.world', has: (i) => !isAlt(i) },

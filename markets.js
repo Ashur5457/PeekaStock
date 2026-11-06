@@ -4,6 +4,8 @@
 globalThis.PSMarkets ??= (() => {
   const ALL_DAY = [['00:00', '24:00']];
   const FUT_DAY = [['00:00', '17:00'], ['18:00', '24:00']];
+  const TXF_MON = [['08:45', '13:45'], ['15:00', '24:00']];
+  const TXF_DAY = [['00:00', '05:00'], ...TXF_MON];
   // 地區名稱在 i18n.js 的 mkt.＋市場代號
   const MARKETS = {
     tw: { tz: 'Asia/Taipei', hours: [['09:00', '13:30']] },
@@ -34,20 +36,27 @@ globalThis.PSMarkets ??= (() => {
     fut: { tz: 'America/New_York', byDay: {
       Sun: [['18:00', '24:00']], Mon: FUT_DAY, Tue: FUT_DAY, Wed: FUT_DAY, Thu: FUT_DAY, Fri: [['00:00', '17:00']],
     } },
+    // 台指期（期交所）：日盤 08:45～13:45、夜盤 15:00～隔天 05:00；週一凌晨沒有夜盤，週五的夜盤做到週六 05:00
+    txf: { tz: 'Asia/Taipei', byDay: {
+      Mon: TXF_MON, Tue: TXF_DAY, Wed: TXF_DAY, Thu: TXF_DAY, Fri: TXF_DAY, Sat: [['00:00', '05:00']],
+    } },
   };
 
   // 指數表：加一行就多一個指數（名稱在 i18n.js 的 idx.＋代號）。group 決定由哪個抓取群組負責（見 sw.js 的 GROUPS）：
   //   tw  → 證交所 MIS（台灣兩個指數 Yahoo 延遲 20 分，改用 MIS，見 CLAUDE.md 7.3）
   //   idx → Yahoo spark，每 30 秒；crypto → Yahoo spark，每 5 秒（實測只晚約 5 秒）
+  //   txf → 期交所 MIS（台指期近月，日盤、夜盤自動切換，見 sources.js 的 taifex）
+  //   美股指數期貨（ES、NQ、YM）幾乎 24 小時交易：美股夜盤沒有免費資料（CLAUDE.md 7.7），用它看美股晚上的方向
   // 第 4 欄 delay：來源固定延遲幾秒（CLAUDE.md 7.2 實測）。變灰的門檻要加上它，不然盤中永遠是灰的；
   // 收盤後也要多抓這麼久，才拿得到收盤價（見 isOpen）
   const INDICES = [
-    ['tw', 'tw', 'tse_t00'], ['tw', 'tw', 'otc_o00'],
+    ['tw', 'tw', 'tse_t00'], ['tw', 'tw', 'otc_o00'], ['txf', 'txf', 'TXF'],
     ['us', 'idx', '^DJI'], ['us', 'idx', '^GSPC'], ['us', 'idx', '^IXIC'], ['us', 'idx', '^SOX'],
     ['cn', 'idx', '000001.SS', 900], ['cn', 'idx', '399001.SZ', 900], ['cn', 'idx', '000300.SS', 900],
     ['hk', 'idx', '^HSI', 900], ['jp', 'idx', '^N225', 900], ['kr', 'idx', '^KS11', 1200],
     ['sg', 'idx', '^STI', 900], ['uk', 'idx', '^FTSE', 900], ['fr', 'idx', '^FCHI', 900], ['de', 'idx', '^GDAXI', 900],
     ['crypto', 'crypto', 'BTC-USD'], ['crypto', 'crypto', 'ETH-USD'],
+    ['fut', 'idx', 'ES=F', 600], ['fut', 'idx', 'NQ=F', 600], ['fut', 'idx', 'YM=F', 600],
     ['fut', 'idx', 'GC=F', 600], ['fut', 'idx', 'SI=F', 600], ['fut', 'idx', 'CL=F', 600],
   ].map(([market, group, symbol, delay = 0]) => ({ key: `idx:${symbol}`, market, group, symbol, delay, nameKey: `idx.${symbol}` }));
 
@@ -100,6 +109,9 @@ globalThis.PSMarkets ??= (() => {
     return Object.keys(ext).find((k) => within(ext[k], hm)) ?? null;
   }
 
+  // 台指期現在該看哪一盤：08:45～15:00 看日盤（收盤後到夜盤開始前，日盤收盤是最新的），其他時間看夜盤
+  const txfSession = (now) => (within(['08:45', '15:00'], clockIn(MARKETS.txf.tz, now).hm) ? 'day' : 'night');
+
   // 時區偏移（毫秒）：把當地的年月日時分秒當成 UTC 算出來的時間，減掉真正的時間
   function offsetOf(tz, at) {
     const fmt = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric',
@@ -139,5 +151,5 @@ globalThis.PSMarkets ??= (() => {
     return r && now > r[0] && now < r[1] ? 'break' : 'closed';
   }
 
-  return { MARKETS, INDICES, SUFFIX, suffixOf, byQuote, isOpen, extSession, dayRange, lineDomain, phase };
+  return { MARKETS, INDICES, SUFFIX, suffixOf, byQuote, isOpen, extSession, txfSession, dayRange, lineDomain, phase };
 })();

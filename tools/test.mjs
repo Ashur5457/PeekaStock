@@ -67,8 +67,11 @@ const reply = (body, status = 200) => ({
   ok: status < 400, status,
   json: async () => (typeof body === 'string' ? JSON.parse(body) : structuredClone(body)),
 });
-function fakeFetch(url) {
+function fakeFetch(url, init = {}) {
   calls.push(url);
+  if (url.includes('mis.taifex.com.tw')) {   // 期交所是 POST：MarketType 1＝夜盤
+    return Promise.resolve(reply(sample('taifex.json')[JSON.parse(init.body).MarketType === '1' ? 'night' : 'day']));
+  }
   if (url.includes('mis.twse.com.tw')) {
     return Promise.resolve(reply({ ...sample('mis.json'), msgArray: [...sample('mis.json').msgArray, ...sample('mis-index.json').msgArray] }));
   }
@@ -144,7 +147,7 @@ await test('組出來的 key 也都存在：指數、地區、分頁、段標題
     ...['tse', 'otc', 'us'].map((x) => `ex.${x}`), ...['up', 'down', 'del', 'ren', 'tup', 'tdown', 'tdel', 'bell', 'asave', 'aclear'].map((x) => `op.${x}`),
     ...PSAlerts.RULES.map((r) => `alert.${r.kind}`),
     ...['tabEmpty', 'tabLong', 'tabDup', 'tabFull', 'format', 'notFound'].map((x) => `msg.${x}`),
-    ...['bid', 'ask', 'pre', 'post'].flatMap((x) => [`tag.${x}`, `tag.${x}Hint`]),
+    ...['bid', 'ask', 'pre', 'post', 'night'].flatMap((x) => [`tag.${x}`, `tag.${x}Hint`]),
   ];
   keys.forEach((k) => assert.ok(STRINGS[k], `少了 ${k}`));
 });
@@ -261,10 +264,10 @@ await test('刪除與上下搬移；到頂、到底、找不到都不動', () =>
 await test('分段：台股／美股／國際指數，段內指數在前、自選股在後', () => {
   const secs = sections(itemsOf(PSPrefs.DEFAULT));
   assert.deepEqual(secs.map((s) => s.id), ['tw', 'us', 'world', 'alt']);
-  assert.deepEqual(secs[3].items.map((i) => i.symbol), ['BTC-USD', 'ETH-USD', 'GC=F', 'SI=F', 'CL=F']);
-  assert.deepEqual(secs[0].items.map((i) => i.key), ['idx:tse_t00', 'idx:otc_o00', 'tw:2330', 'tw:6488']);
+  assert.deepEqual(secs[3].items.map((i) => i.symbol), ['BTC-USD', 'ETH-USD', 'ES=F', 'NQ=F', 'YM=F', 'GC=F', 'SI=F', 'CL=F']);
+  assert.deepEqual(secs[0].items.map((i) => i.key), ['idx:tse_t00', 'idx:otc_o00', 'idx:TXF', 'tw:2330', 'tw:6488']);   // 台指期跟著台股
   assert.deepEqual(secs[1].items.slice(-2).map((i) => i.key), ['us:AAPL', 'us:NVDA']);
-  assert.ok(secs[2].items.every((i) => i.key.startsWith('idx:') && !['tw', 'us', 'crypto', 'fut'].includes(i.market)));
+  assert.ok(secs[2].items.every((i) => i.key.startsWith('idx:') && !['tw', 'txf', 'us', 'crypto', 'fut'].includes(i.market)));
 });
 await test('空的段不出現（美國指數全關、也沒有自選美股）', () => {
   const p = PSPrefs.merge({
@@ -335,7 +338,8 @@ await test('分頁內容：台股分頁只有台股、國際分頁沒有台美�
   const p = PSPrefs.merge({ tabs: [{ id: 't1', name: '科技', keys: ['us:NVDA', 'tw:2330', 'idx:^SOX'] }] });
   const list = itemsOf(p);
   const keysIn = (id) => list.filter(visibleTabs(p, list).find((x) => x.id === id).has).map((i) => i.key);
-  assert.ok(keysIn('tw').every((k) => k === 'tw:2330' || k === 'tw:6488' || k.startsWith('idx:t') || k.startsWith('idx:o')));
+  assert.ok(keysIn('tw').every((k) => k === 'tw:2330' || k === 'tw:6488' || k.startsWith('idx:t') || k.startsWith('idx:o') || k === 'idx:TXF'));
+  assert.ok(keysIn('tw').includes('idx:TXF') && !keysIn('world').includes('idx:TXF') && !keysIn('alt').includes('idx:TXF'));
   assert.ok(keysIn('world').every((k) => !['idx:^DJI', 'tw:2330', 'us:AAPL'].includes(k)));
   assert.deepEqual(keysIn('t1'), ['tw:2330', 'us:NVDA', 'idx:^SOX']);   // 照自選清單＋指數表的順序
   assert.equal(keysIn('all').length, list.length);
@@ -593,9 +597,9 @@ await test('排序：漲幅大到小、跌幅大到小；指數固定在段的�
   const list = itemsOf(PSPrefs.merge({ watchlist: [W('2330'), W('2317'), W('2454'), W('AAPL', 'us'), W('NVDA', 'us')] }));
   const quotes = { 'tw:2330': { pct: 1 }, 'tw:2317': { pct: -2 }, 'us:AAPL': { pct: -1 }, 'us:NVDA': { pct: 3 } };
   const order = (sort) => sections(list, quotes, sort).slice(0, 2).map((s) => s.items.map((i) => i.key.replace(/^\w+:/, '')));
-  assert.deepEqual(order('manual')[0], ['tse_t00', 'otc_o00', '2330', '2317', '2454']);
-  assert.deepEqual(order('up')[0], ['tse_t00', 'otc_o00', '2330', '2317', '2454']);
-  assert.deepEqual(order('down')[0], ['tse_t00', 'otc_o00', '2317', '2330', '2454']);
+  assert.deepEqual(order('manual')[0], ['tse_t00', 'otc_o00', 'TXF', '2330', '2317', '2454']);
+  assert.deepEqual(order('up')[0], ['tse_t00', 'otc_o00', 'TXF', '2330', '2317', '2454']);
+  assert.deepEqual(order('down')[0], ['tse_t00', 'otc_o00', 'TXF', '2317', '2330', '2454']);
   assert.deepEqual(order('up')[1].slice(-2), ['NVDA', 'AAPL']);
   assert.deepEqual(sections(list, quotes, 'down').map((s) => s.id), sections(list).map((s) => s.id));
   const glQuotes = { 'jp:7203.T': { pct: -3 }, 'uk:SHEL.L': { pct: 2 } };   // 國家段照自選順序（日股在英股前），不跟著漲跌換
@@ -823,6 +827,58 @@ await test('盤前盤後的價格不觸發提醒', () => {
   assert.ok(at('trade') > 0);
 });
 
+console.log('\n台指期（期交所）、美股指數期貨');
+const TAIFEX = sample('taifex.json');
+const TXF = INDICES.find((i) => i.symbol === 'TXF');
+await test('台指期交易時段：日盤 08:45～13:45、夜盤 15:00～隔天 05:00；週一凌晨、週六 05:00 以後、週日沒有', () => {
+  const at = (d, h, m) => Date.UTC(2026, 10, d, h - 8, m);   // 2026-11-02 是週一（台北時間）
+  [[2, 9, 0], [2, 16, 0], [3, 1, 0], [7, 4, 30], [6, 23, 0]].forEach(([d, h, m]) => assert.equal(isOpen('txf', at(d, h, m)), true, `${d} ${h}:${m}`));
+  [[2, 3, 0], [2, 14, 0], [3, 6, 0], [7, 6, 0], [8, 12, 0]].forEach(([d, h, m]) => assert.equal(isOpen('txf', at(d, h, m)), false, `${d} ${h}:${m}`));
+});
+await test('看哪一盤：08:45～15:00 看日盤（收盤後到夜盤前也是），其他時間看夜盤', () => {
+  const at = (h, m) => Date.UTC(2026, 10, 3, h - 8, m);
+  assert.deepEqual([at(10, 0), at(14, 30), at(15, 0), at(3, 0), at(8, 30)].map(PSMarkets.txfSession), ['day', 'day', 'night', 'night', 'night']);
+});
+await test('期交所解析（真實樣本）：跳過現貨、取近月；夜盤標 night；漲跌跟參考價比；時間是台北時間', () => {
+  const [day] = PSSources.parseTaifex(TAIFEX.day, 1, TXF, 'day');
+  const dayRow = TAIFEX.day.RtData.QuoteList[1];
+  assert.equal(day.name, dayRow.DispCName);
+  assert.deepEqual([day.price, day.prev, day.from], [Number(dayRow.CLastPrice), Number(dayRow.CRefPrice), 'trade']);
+  assert.ok(Math.abs(day.chg - Number(dayRow.CDiff)) < 1e-6);
+  assert.equal(day.time, PSSources.taifexTime(dayRow.CDate, dayRow.CTime));
+  const [night] = PSSources.parseTaifex(TAIFEX.night, 1, TXF, 'night');
+  assert.equal(night.from, 'night');
+  assert.equal(night.name, TAIFEX.night.RtData.QuoteList[1].DispCName);
+  assert.equal(PSSources.taifexTime('20261106', '202047'), Date.UTC(2026, 10, 6, 12, 20, 47));
+  assert.equal(PSSources.taifexTime('20261107', '84500'), Date.UTC(2026, 10, 7, 0, 45, 0));   // 凌晨／早上只有 5 位數
+  assert.equal(PSSources.taifexTime('', ''), null);
+});
+await test('期交所：還沒成交用最佳買價；沒有期貨合約 → 不回報價', () => {
+  const rows = structuredClone(TAIFEX.day);
+  rows.RtData.QuoteList[1].CLastPrice = '';
+  rows.RtData.QuoteList[1].CBestBidPrice = '39780.00';
+  assert.equal(PSSources.parseTaifex(rows, 1, TXF, 'day')[0].price, 39780);
+  assert.deepEqual(PSSources.parseTaifex({ RtData: { QuoteList: [TAIFEX.day.RtData.QuoteList[0]] } }, 1, TXF, 'day'), []);
+});
+await test('期交所請求：POST、日盤送 MarketType 0、夜盤送 1；回報錯誤代碼就丟錯誤', async () => {
+  const seen = [];
+  const fetchFn = (url, init) => { seen.push([url, init.method, JSON.parse(init.body).MarketType]); return fakeFetch(url, init); };
+  await SOURCES.taifex([TXF], fetchFn, Date.UTC(2026, 10, 6, 2, 0));    // 台北 10:00
+  await SOURCES.taifex([TXF], fetchFn, Date.UTC(2026, 10, 6, 13, 0));   // 台北 21:00
+  assert.deepEqual(seen.map(([u, m, t]) => [u.includes('mis.taifex.com.tw/futures/api/getQuoteList'), m, t]), [[true, 'POST', '0'], [true, 'POST', '1']]);
+  await assert.rejects(SOURCES.taifex([TXF], async () => reply({ RtCode: '9', RtMsg: 'busy' })), (e) => e.src === 'TAIFEX' && e.detail === 'busy');
+});
+await test('美股指數期貨（ES、NQ、YM）：延遲 10 分鐘，放「加密／期貨」分頁', () => {
+  ['ES=F', 'NQ=F', 'YM=F'].forEach((s) => {
+    const i = INDICES.find((x) => x.symbol === s);
+    assert.deepEqual([i.market, i.group, i.delay], ['fut', 'idx', 600], s);
+    assert.ok(PSPrefs.BUILTIN_TABS.find((x) => x.id === 'alt').has(i), s);
+  });
+});
+await test('manifest：多連期交所一個網站', () => {
+  assert.ok(JSON.parse(src('manifest.json')).host_permissions.includes('https://mis.taifex.com.tw/*'));
+});
+
 console.log('\n背景程式（tick → 抓取 → storage.session）');
 globalThis.fetch = fakeFetch;
 load('sw.js');
@@ -838,7 +894,9 @@ await test('第一次 tick：三個群組都抓，報價寫進 storage.session',
   await tickOnce();
   ['tw:2330', 'tw:6488', 'us:AAPL', 'us:NVDA', 'idx:tse_t00', 'idx:^N225', 'idx:^GDAXI'].forEach((k) =>
     assert.ok(session.quotes?.[k]?.price > 0, k));
-  assert.deepEqual(Object.keys(session.status).sort(), ['crypto', 'idx', 'tw', 'us']);
+  assert.deepEqual(Object.keys(session.status).sort(), ['crypto', 'idx', 'tw', 'txf', 'us']);
+  assert.ok(session.quotes['idx:TXF']?.price > 0, 'idx:TXF');
+  assert.equal(calls.filter((u) => u.includes('mis.taifex')).length, 1);
   assert.ok(Object.values(session.status).every((s) => s.ok));
   assert.equal(calls.filter((u) => u.includes('mis.twse')).length, 1);
 });

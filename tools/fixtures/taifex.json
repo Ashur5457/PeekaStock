@@ -1,0 +1,102 @@
+{
+ "day": {
+  "RtCode": "0",
+  "RtMsg": "",
+  "RtData": {
+   "QuoteList": [
+    {
+     "SymbolID": "TXF-S",
+     "DispCName": "臺指現貨",
+     "DispEName": "TXF",
+     "Status": "TC",
+     "CLastPrice": "39701.64",
+     "CRefPrice": "41574.72",
+     "CBestBidPrice": "",
+     "CBestAskPrice": "",
+     "CDiff": "-1873.08",
+     "CDiffRate": "-4.51",
+     "CDate": "20261106",
+     "CTime": "133315"
+    },
+    {
+     "SymbolID": "TXFK6-F",
+     "DispCName": "臺指期116",
+     "DispEName": "TX116",
+     "Status": "TC",
+     "CLastPrice": "39786.00",
+     "CRefPrice": "41882.00",
+     "CBestBidPrice": "39787.00",
+     "CBestAskPrice": "39807.00",
+     "CDiff": "-2096.00",
+     "CDiffRate": "-5.00",
+     "CDate": "20261106",
+     "CTime": "134459"
+    },
+    {
+     "SymbolID": "TXFL6-F",
+     "DispCName": "臺指期126",
+     "DispEName": "TX126",
+     "Status": "TC",
+     "CLastPrice": "39821.00",
+     "CRefPrice": "41941.00",
+     "CBestBidPrice": "39836.00",
+     "CBestAskPrice": "39864.00",
+     "CDiff": "-2120.00",
+     "CDiffRate": "-5.05",
+     "CDate": "20261106",
+     "CTime": "134458"
+    }
+   ]
+  }
+ },
+ "night": {
+  "RtCode": "0",
+  "RtMsg": "",
+  "RtData": {
+   "QuoteList": [
+    {
+     "SymbolID": "TXF-P",
+     "DispCName": "臺指現貨",
+     "DispEName": "TXF",
+     "Status": "",
+     "CLastPrice": "",
+     "CRefPrice": "39701.64",
+     "CBestBidPrice": "",
+     "CBestAskPrice": "",
+     "CDiff": "0.00",
+     "CDiffRate": "0.00",
+     "CDate": "20261106",
+     "CTime": ""
+    },
+    {
+     "SymbolID": "TXFK6-M",
+     "DispCName": "臺指期116",
+     "DispEName": "TX116",
+     "Status": "",
+     "CLastPrice": "40465.00",
+     "CRefPrice": "39652.00",
+     "CBestBidPrice": "40460.00",
+     "CBestAskPrice": "40468.00",
+     "CDiff": "813.00",
+     "CDiffRate": "2.05",
+     "CDate": "20261106",
+     "CTime": "202255"
+    },
+    {
+     "SymbolID": "TXFL6-M",
+     "DispCName": "臺指期126",
+     "DispEName": "TX126",
+     "Status": "",
+     "CLastPrice": "40486.00",
+     "CRefPrice": "39719.00",
+     "CBestBidPrice": "40520.00",
+     "CBestAskPrice": "40532.00",
+     "CDiff": "767.00",
+     "CDiffRate": "1.93",
+     "CDate": "20261106",
+     "CTime": "201706"
+    }
+   ]
+  }
+ }
+}

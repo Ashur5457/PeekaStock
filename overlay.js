@@ -25,7 +25,7 @@
   const STALE_SEC = 120;   // 盤中資料超過 2 分鐘變灰（CLAUDE.md 2.3）
   const { t } = PSI18n;    // 查翻譯；不要再拿 t 當區域變數名稱（CLAUDE.md 第 4 節坑 3）
   // 價格不是正常時段的成交價時標出來：MIS 的買賣價、美股盤前盤後（i18n 的 tag.＋來源，提示 tag.＋來源＋Hint）
-  const FROM_TAG = { bid: 'bid', ask: 'ask', pre: 'pre', post: 'post' };
+  const FROM_TAG = { bid: 'bid', ask: 'ask', pre: 'pre', post: 'post', night: 'night' };   // night：台指期夜盤
   // 偷喵配色（和圖示一致）：黑貓的炭黑底＋金色眼睛當強調色。貓的裝飾只在一般外觀出現，隱身模式全部藏起來
   const GOLD = '#FFC23D';
   // 工具列上的小貓頭（圖示裡那隻黑貓）
@@ -393,7 +393,7 @@
   }
 
   // 抓取群組 → 錯誤列上顯示的名稱
-  const GROUP_KEY = { tw: 'sec.tw', us: 'sec.us', idx: 'sec.world', crypto: 'sec.alt', ext: 'sec.us', gl: 'grp.gl' };
+  const GROUP_KEY = { tw: 'sec.tw', us: 'sec.us', idx: 'sec.world', crypto: 'sec.alt', ext: 'sec.us', gl: 'grp.gl', txf: 'idx.TXF' };
   function footView() {
     const errors = Object.entries(session.status ?? {}).filter(([, s]) => !s.ok).map(([id, s]) => {
       const d = document.createElement('div');

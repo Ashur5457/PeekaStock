@@ -36,8 +36,10 @@ globalThis.PSI18n ??= (() => {
     'tag.ask': ['賣價', 'Ask', '卖价', '売値', '매도', 'V'],
     'tag.pre': ['盤前', 'Pre', '盘前', '寄前', '장전', 'Pre'],
     'tag.post': ['盤後', 'Post', '盘后', '引後', '장후', 'Post'],
+    'tag.night': ['夜盤', 'Night', '夜盘', '夜間', '야간', 'Noche'],
     'tag.preHint': ['美股盤前價，上次收盤 {close}', 'Pre-market price; last close {close}', '美股盘前价，上次收盘 {close}', 'プレマーケット価格、前回終値 {close}', '프리마켓 가격, 직전 종가 {close}', 'Precio preapertura; último cierre {close}'],
     'tag.postHint': ['美股盤後價，收盤 {close}', 'After-hours price; close {close}', '美股盘后价，收盘 {close}', 'アフターマーケット価格、終値 {close}', '애프터마켓 가격, 종가 {close}', 'Precio tras el cierre; cierre {close}'],
+    'tag.nightHint': ['台指期夜盤（15:00～隔天 05:00），漲跌跟日盤結算 {close} 比', 'TAIEX futures night session (15:00–05:00); change vs. day settlement {close}', '台指期夜盘（15:00～次日 05:00），涨跌跟日盘结算 {close} 比', '台湾先物の夜間取引（15:00～翌 05:00）、騰落は日中の清算値 {close} 比', '대만 선물 야간 거래(15:00~익일 05:00), 등락은 주간 정산가 {close} 대비', 'Sesión nocturna de futuros TAIEX (15:00–05:00); cambio frente a la liquidación diurna {close}'],
     'tag.bidHint': ['盤中沒有成交價，顯示最佳買價', 'No trade price yet; showing the best bid', '盘中没有成交价，显示最佳买价', '約定値がないため最良買い気配を表示', '체결가가 없어 최우선 매수호가를 표시', 'Sin precio de operación; se muestra la mejor compra'],
     'tag.askHint': ['盤中沒有成交價，顯示最佳賣價', 'No trade price yet; showing the best ask', '盘中没有成交价，显示最佳卖价', '約定値がないため最良売り気配を表示', '체결가가 없어 최우선 매도호가를 표시', 'Sin precio de operación; se muestra la mejor venta'],
 
@@ -108,9 +110,9 @@ globalThis.PSI18n ??= (() => {
     'hs.sort': ['分頁列右邊：⇅ 排序 → ▲ 漲幅 → ▼ 跌幅', 'Right of the tabs: ⇅ Sort → ▲ Gainers → ▼ Losers', '标签栏右边：⇅ 排序 → ▲ 涨幅 → ▼ 跌幅', 'タブ右端：⇅ 並替 → ▲ 上昇 → ▼ 下落', '탭 오른쪽: ⇅ 정렬 → ▲ 상승 → ▼ 하락', 'A la derecha de las pestañas: ⇅ Orden → ▲ Suben → ▼ Bajan'],
     'hs.status': ['段標題旁：盤前、盤中、午休、盤後、休市', 'By section titles: Pre-market, Open, Lunch break, After hours, Closed', '段标题旁：盘前、盘中、午休、盘后、休市', '見出しの横：寄り前・取引中・昼休み・引け後・休場', '구역 제목 옆: 장전, 장중, 점심 휴장, 장후, 휴장', 'Junto a cada título: Preapertura, Abierto, Pausa, Tras el cierre, Cerrado'],
     'hs.stale': ['整列變灰＝資料比平常舊 2 分鐘以上', 'Gray row = data over 2 minutes older than usual', '整行变灰＝数据比平常旧 2 分钟以上', '行がグレー＝データがいつもより 2 分以上古い', '회색 줄＝데이터가 평소보다 2분 넘게 오래됨', 'Fila gris = datos más de 2 minutos más viejos de lo normal'],
-    'hs.tag': ['買價／賣價＝還沒成交；盤前／盤後＝美股延長交易', 'Bid/Ask = no trade yet; Pre/Post = US extended hours', '买价／卖价＝还没成交；盘前／盘后＝美股延长交易', '買値／売値＝未約定、寄前／引後＝米国株の時間外', '매수/매도＝체결 전, 장전/장후＝미국 시간외', 'C/V = sin operación aún; Pre/Post = horario extendido de EE. UU.'],
+    'hs.tag': ['買價／賣價＝還沒成交；盤前／盤後＝美股延長交易；夜盤＝台指期夜盤', 'Bid/Ask = no trade yet; Pre/Post = US extended hours; Night = TAIEX futures night session', '买价／卖价＝还没成交；盘前／盘后＝美股延长交易；夜盘＝台指期夜盘', '買値／売値＝未約定、寄前／引後＝米国株の時間外、夜間＝台湾先物の夜間取引', '매수/매도＝체결 전, 장전/장후＝미국 시간외, 야간＝대만 선물 야간 거래', 'C/V = sin operación aún; Pre/Post = horario extendido de EE. UU.; Noche = sesión nocturna de futuros TAIEX'],
     'hs.global': ['其他國家：代號加後綴，例如 7203.T、0700.HK、SHEL.L', 'Other markets: add the exchange suffix, e.g. 7203.T, 0700.HK, SHEL.L', '其他国家：代码加后缀，例如 7203.T、0700.HK、SHEL.L', '他の国：接尾辞つき（例：7203.T、0700.HK、SHEL.L）', '다른 나라: 접미사 포함(예: 7203.T, 0700.HK, SHEL.L)', 'Otros mercados: añade el sufijo, p. ej. 7203.T, 0700.HK, SHEL.L'],
-    'hs.delay': ['台美股、加密幾乎即時；期貨 10 分，其他國家 15～20 分', 'Taiwan, US, crypto near real time; futures 10 min, other markets 15–20', '台美股、加密几乎实时；期货 10 分，其他国家 15～20 分', '台湾・米国・暗号資産はほぼ即時、先物 10 分、他の国 15～20 分遅れ', '대만·미국·코인 거의 실시간, 선물 10분, 다른 나라 15~20분', 'Taiwán, EE. UU. y cripto casi al instante; futuros 10 min, otros 15–20'],
+    'hs.delay': ['台美股、台指期、加密幾乎即時；美國期貨 10 分，其他國家 15～20 分', 'Taiwan, US, TAIEX futures, crypto near real time; US futures 10 min, other markets 15–20', '台美股、台指期、加密几乎实时；美国期货 10 分，其他国家 15～20 分', '台湾・米国・台湾先物・暗号資産はほぼ即時、米国先物 10 分、他の国 15～20 分遅れ', '대만·미국·대만 선물·코인 거의 실시간, 미국 선물 10분, 다른 나라 15~20분', 'Taiwán, EE. UU., futuros TAIEX y cripto casi al instante; futuros de EE. UU. 10 min, otros 15–20'],
     'hs.alerts': ['⚙ 自選股按 🔔 設到價；大漲大跌預設 ±3%', 'Tap 🔔 on a watchlist row in ⚙ for a price; big moves ±3% by default', '⚙ 自选股按 🔔 设到价；大涨大跌默认 ±3%', '⚙ の 🔔 で価格を設定。急騰・急落は初期値 ±3%', '⚙ 관심종목의 🔔로 가격 설정, 급등락 기본 ±3%', 'Pulsa 🔔 en ⚙ para fijar un precio; grandes movimientos ±3% por defecto'],
     'help.more': ['完整說明（GitHub）→', 'Full guide (GitHub) →', '完整说明（GitHub）→', '詳しい説明（GitHub）→', '전체 설명(GitHub) →', 'Guía completa (GitHub) →'],
     'help.readme': ['https://github.com/Ashur5457/PeekaStock/blob/main/README.md', 'https://github.com/Ashur5457/PeekaStock/blob/main/README.en.md', 'https://github.com/Ashur5457/PeekaStock/blob/main/README.zh-Hans.md', 'https://github.com/Ashur5457/PeekaStock/blob/main/README.ja.md', 'https://github.com/Ashur5457/PeekaStock/blob/main/README.ko.md', 'https://github.com/Ashur5457/PeekaStock/blob/main/README.es.md'],
@@ -193,6 +195,7 @@ globalThis.PSI18n ??= (() => {
     'mkt.de': ['德國', 'Germany', '德国', 'ドイツ', '독일', 'Alemania'],
     'mkt.crypto': ['加密貨幣', 'Crypto', '加密货币', '暗号資産', '코인', 'Cripto'],
     'mkt.fut': ['期貨', 'Futures', '期货', '先物', '선물', 'Futuros'],
+    'mkt.txf': ['台灣期貨', 'Taiwan futures', '台湾期货', '台湾先物', '대만 선물', 'Futuros de Taiwán'],
     'mkt.au': ['澳洲', 'Australia', '澳大利亚', 'オーストラリア', '호주', 'Australia'],
     'mkt.nz': ['紐西蘭', 'New Zealand', '新西兰', 'ニュージーランド', '뉴질랜드', 'Nueva Zelanda'],
     'mkt.in': ['印度', 'India', '印度', 'インド', '인도', 'India'],
@@ -287,6 +290,10 @@ globalThis.PSI18n ??= (() => {
     'idx.GC=F': ['黃金', 'Gold', '黄金', '金', '금', 'Oro'],
     'idx.SI=F': ['白銀', 'Silver', '白银', '銀', '은', 'Plata'],
     'idx.CL=F': ['原油', 'Crude oil', '原油', '原油', '원유', 'Petróleo'],
+    'idx.TXF': ['台指期', 'TAIEX futures', '台指期', '台湾指数先物', '대만지수 선물', 'Futuros TAIEX'],
+    'idx.ES=F': ['S&P 期貨', 'S&P futures', '标普期货', 'S&P先物', 'S&P 선물', 'Futuros S&P'],
+    'idx.NQ=F': ['那斯達克期貨', 'Nasdaq futures', '纳斯达克期货', 'ナスダック先物', '나스닥 선물', 'Futuros Nasdaq'],
+    'idx.YM=F': ['道瓊期貨', 'Dow futures', '道琼斯期货', 'ダウ先物', '다우 선물', 'Futuros Dow'],
   };
   /* eslint-enable max-len */
 

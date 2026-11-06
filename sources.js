@@ -19,10 +19,11 @@ globalThis.PSSources ??= (() => {
   // 背景程式只存代碼，框再依目前的介面語言翻成文字（i18n.js 的 err.＋代碼），換語言時已顯示的錯誤也會跟著換
   const fail = (code, src, detail = '') => Object.assign(new Error(`${src} ${code} ${detail}`.trim()), { code, src, detail });
 
-  async function getJson(fetchFn, url, src) {
+  // init：POST 之類的額外設定（期交所要 POST）
+  async function getJson(fetchFn, url, src, init = {}) {
     let res;
     try {
-      res = await fetchFn(url, { cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT_MS) });
+      res = await fetchFn(url, { cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT_MS), ...init });
     } catch (e) {
       throw e.name === 'TimeoutError' ? fail('timeout', src) : fail('other', src, e.message);
     }
@@ -144,7 +145,39 @@ globalThis.PSSources ??= (() => {
     return ok.map((g) => g.value).filter(Boolean);
   }
 
-  const SOURCES = { mis, spark, ext };
+  // ---------- 期交所 MIS：台指期（行情報價網頁自己用的介面，不用 cookie；實測即時，CLAUDE.md 7.7） ----------
+
+  // MarketType：0＝日盤、1＝夜盤（盤後交易）。夜盤的價格標 night，漲跌跟期交所給的參考價（日盤結算）比
+  const TAIFEX_SESSION = { day: { type: '0', from: 'trade' }, night: { type: '1', from: 'night' } };
+  // 日期 20261106＋時間 202047（凌晨可能只有 5 位數）是台北時間（UTC+8，沒有夏令時間）
+  function taifexTime(date, time) {
+    if (!/^\d{8}$/.test(date ?? '') || !/^\d{5,6}$/.test(time ?? '')) return null;
+    const hms = time.padStart(6, '0');
+    const n = (s, a, b) => Number(s.slice(a, b));
+    return Date.UTC(n(date, 0, 4), n(date, 4, 6) - 1, n(date, 6, 8), n(hms, 0, 2) - 8, n(hms, 2, 4), n(hms, 4, 6));
+  }
+
+  // 回應裡第一筆是現貨（TXF-S／TXF-P），之後照到期月排；第一個期貨合約就是近月，換月自動跟著換
+  function parseTaifex(json, at, item, session) {
+    const row = (json?.RtData?.QuoteList ?? []).find((r) => /-[FM]$/.test(r.SymbolID ?? ''));
+    if (!row) return [];
+    const price = num(row.CLastPrice) ?? num(row.CBestBidPrice);
+    return [withChange({ key: item.key, name: row.DispCName, price, prev: num(row.CRefPrice),
+      time: taifexTime(row.CDate, row.CTime), fetchedAt: at, from: TAIFEX_SESSION[session].from })];
+  }
+
+  async function taifex(items, fetchFn = fetch, now = Date.now()) {
+    const session = PSMarkets.txfSession(now);
+    const body = { MarketType: TAIFEX_SESSION[session].type, SymbolType: 'F', KindID: '1', CID: 'TXF', ExpireMonth: '',
+      RowSize: '\u5168\u90e8', PageNo: '', SortColumn: '', AscDesc: 'A' };   // RowSize＝「全部」（期交所網頁送的就是這兩個字）
+    const json = await getJson(fetchFn, 'https://mis.taifex.com.tw/futures/api/getQuoteList', 'TAIFEX', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (json.RtCode !== '0') throw fail('other', 'TAIFEX', json.RtMsg || json.RtCode);
+    return items.flatMap((item) => parseTaifex(json, Date.now(), item, session));
+  }
+
+  const SOURCES = { mis, spark, ext, taifex };
 
   // ---------- 新增自選股時查代號（存不存在、名稱、台股是上市還是上櫃） ----------
 
@@ -165,5 +198,5 @@ globalThis.PSSources ??= (() => {
   const LOOKUP = { tw: lookupTw };
   const lookup = (market, code, fetchFn = fetch) => (LOOKUP[market] ?? lookupYahoo)(code, fetchFn, market);
 
-  return { SOURCES, lookup, SPARK_MAX, EXT_MAX, parseMis, parseSpark, parseChart, num };
+  return { SOURCES, lookup, SPARK_MAX, EXT_MAX, parseMis, parseSpark, parseChart, parseTaifex, taifexTime, num };
 })();

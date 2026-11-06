@@ -120,7 +120,7 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 
 | 檔案 | 作用 |
 |---|---|
-| `manifest.json` | MV3 v0.7.0；`icons`／`action.default_icon`；說明、圖示提示、快捷鍵說明用 `__MSG_…__`（`default_locale: en`）；權限 `storage`、`alarms`（背景提醒）；`commands`（toggle-hide）、`action`（點圖示＝隱藏／顯示）；`host_permissions` 只有 MIS 和 `query1.finance.yahoo.com`；content script 比對 `<all_urls>`，載入順序 i18n → markets → prefs → box → blank → panel → overlay |
+| `manifest.json` | MV3 v0.7.0；`icons`／`action.default_icon`；說明、圖示提示、快捷鍵說明用 `__MSG_…__`（`default_locale: en`）；權限 `storage`、`alarms`（背景提醒）；`commands`（toggle-hide）、`action`（點圖示＝隱藏／顯示）；`host_permissions` 只有證交所 MIS、期交所 MIS（`mis.taifex.com.tw`，台指期）和 `query1.finance.yahoo.com`；content script 比對 `<all_urls>`，載入順序 i18n → markets → prefs → box → blank → panel → overlay |
 | `_locales/*/messages.json` | manifest 的六語文字（en、zh_TW、zh_CN、ja、ko、es）：`extDescription`、`actionTitle`、`cmdToggleHide` |
 | `i18n.js` | `PSI18n`（架構沿用 FreeLiveSub）：每個 key 一行、6 欄（zh-Hant、en、zh-Hans、ja、ko、es）；`t(key, vars)`、`apply(root)`（`data-i18n`／`data-i18n-title`／`data-i18n-placeholder`）、`resolve('auto')` 依瀏覽器語言。指數名稱 `idx.＋代號`、地區 `mkt.＋市場`、錯誤 `err.＋代碼` |
 | `markets.js` | `PSMarkets`：市場表（時區、交易時段）、指數表 `INDICES`（市場、抓取群組、代號、`nameKey`、`delay`）、`isOpen(market, now, quote?, delay?)`（`byDay`＝不是週一到週五的市場：加密貨幣 24 小時、CME 期貨；沒寫時段的市場 `byQuote()` 看報價的 `period`；`delay`＝收盤後再多算幾秒）、`extSession()`（美股盤前盤後）；其他國家個股的後綴表 `SUFFIX`（後綴 → 市場、延遲秒數）與 `suffixOf()` |
@@ -381,6 +381,15 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 - `meta.currentTradingPeriod.regular` 是今天的交易時段（秒）；**收盤後給的是下一個交易日的時段**（香港、東京收盤後拿到隔天 09:30、09:00）。所以沒有時段表的市場只靠它判斷盤中，休市時每 30 分鐘再問一次
 - `exchangeTimezoneName`：維也納（`.VI`）回 `Europe/Amsterdam`、越南回 `Asia/Bangkok`，所以市場表的時區自己寫
 
+### 7.7 美股夜盤、台指期：2026-11-06 21:20（日本時間；美東 07:20 盤前、台北 20:20 期貨夜盤）
+
+- ❌ **美股夜盤（美東 20:00～04:00）Yahoo 沒有**：v8 chart `includePrePost=true`（加 `includeOvernight=true` 也一樣）抓 AAPL、NVDA、TSLA 兩天每分鐘資料，夜盤時段 0 筆；`currentTradingPeriod` 只有 pre／regular／post；v7 quote（cookie＋crumb）也沒有任何 overnight 欄位。夜盤成交在券商自己的系統（例如 Blue Ocean），沒有免費、不用金鑰的來源 → 改加美股指數期貨 `ES=F`、`NQ=F`、`YM=F`（Yahoo，延遲 10 分鐘）當替代
+- ✅ **台指期：期交所「行情報價」網頁的介面** `POST https://mis.taifex.com.tw/futures/api/getQuoteList`，body `{ MarketType: '0'＝日盤／'1'＝夜盤, SymbolType: 'F', KindID: '1', CID: 'TXF', RowSize: '全部', … }`；不用 cookie、不用金鑰，一次約 4.5 KB；`RtCode: '0'` 是成功
+  - 回應 `RtData.QuoteList`：第一筆是現貨（日盤 `TXF-S`、夜盤 `TXF-P`），之後照到期月排（`TXFK6-F`＝日盤 2026-11、`TXFK6-M`＝夜盤），第一個期貨合約就是近月
+  - 欄位：`CLastPrice` 成交價、`CRefPrice` 參考價（夜盤的參考價是日盤結算）、`CDiff`／`CDiffRate` 漲跌、`CBestBidPrice`／`CBestAskPrice`、`CDate`（`20261106`）＋`CTime`（`202047`，台北時間）、`DispCName`（`臺指期116`）
+  - 延遲：夜盤成交時間和現在只差 **2 秒**（即時）
+  - ⚠ 還沒實測：凌晨 00:00～05:00 的 `CDate` 是日曆日期還是交易日（目前照日曆日期算，20:20 時是當天日期）；CTime 早上可能只有 5 位數（`84500`），已先補 0
+
 ### 7.3 目前結論：正式版用哪個端點
 
 | 項目 | 建議 | 理由 |
@@ -415,3 +424,4 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 - 2026-11-02：使用者要框能拉到桌面、資料夾、Office 上。擴充功能畫不到網頁外面 → 用 Chrome 的文件子母畫面（工具列 ⧉ → 主人視窗 → 按「開小視窗」），實驗見 7.5。主人視窗用擴充功能自己的頁面，不用一般分頁（一般分頁換網頁小視窗就關）。小視窗裡不放工具列和設定，設定在網頁上的框做；開著時照常抓報價（主人視窗的 tick 不看分頁看不看得見），藏身鍵、點圖示會關掉它。不選：另寫 Windows 桌面程式（要另外安裝，是另一個專案）。2026-11-02 使用者實測 OK（`a30e549`：小視窗、加密貨幣與期貨、盤前盤後標記）
 - 2026-11-04：加入**其他國家個股**（Yahoo spark 抓得到的 43 個交易所，實測見 7.6）。使用者照建議選：價格單位照 Yahoo 給的（便士、分，不換算，提示標幣別）、全部交易所都支援。**使用者看完說明後改**：不用「國際個股」這種統稱，**每個國家一段、用該國股市的叫法**（港股、日股、韓股、陸股…，i18n 的 `stk.＋市場`，接在美股後面，照自選清單裡第一次出現的順序）；**只出現在「全部」分頁**（和自創分頁），「國際」分頁只放指數。**國際指數也照同樣處理**（使用者同意）：指數表填實測延遲（陸、港、日、星、英、法、德 900 秒，韓 1200 秒），盤中不再整列變灰，收盤後也多抓到延遲結束才拿得到收盤價；? 說明的「變灰」改成「比平常多舊 2 分鐘以上」。做法：代號帶 Yahoo 後綴（`7203.T`），`classify()` 先查 `SUFFIX`，`BRK.B` 這種美股照舊；`2330.TW`／`6488.TWO` 去掉後綴當台股；抓取群組 `gl`（spark，每 30 秒）；已有時段表的市場（日、港、陸、韓、星、英、法、德）照表，其他看報價的交易時段（國定假日也算進去）；`isOpen` 加 `delay`：延遲 15 分的市場收盤後再抓 15 分鐘，才拿得到收盤價。資源：同一時間只有開盤的市場在抓，每 20 檔一個請求
 - 2026-11-04：參考 Robinhood 做四個看盤功能（使用者照建議選）。① **迷你走勢線**放在名稱和價格之間的獨立一欄（40×16 的 SVG，實色線；所有列都有這格才對得齊，關掉或隱身模式整欄拿掉）。一開始畫成整列的背景圖（不占寬度），**使用者實測說位置奇怪、又不明顯**：線穿過文字像刪除線，調淡又看不到 → 改獨立一欄，使用者選這個方案；寬度從時間欄改「時:分」（秒放提示）、名稱欄 6.5em → 6em、**預設框寬 320 → 370**（350 時英韓西還會多 15px，370 六語都放得下；已經存過大小的框不會自己變寬）。spark 回應本來就有每 5 分鐘收盤價，存成 `quote.line = [[秒, 價格]…]`，不多發請求；台股 MIS 沒有歷史，sw.js 的 `growLine` 把每次抓到的價格接起來（只有框看得見時，換日清掉，最多 600 點）；盤前盤後沿用 spark 的線；橫軸 `lineDomain()`（有時段表用當天時段；Yahoo 時段收盤後會跳到隔天，所以只在包住整條線時用）；昨收畫虛線；⚙「顯示 → 走勢線」可關。② **點漲跌欄切換 ％／點數**（`prefs.chgMode`，pointerdown）；點數 100 以上不顯示小數，欄寬才不超過％。③ **市場狀態**（`PSMarkets.phase`：盤前、盤中、午休、盤後、休市）放段標題旁；國際指數、加密貨幣不標；只有一段的分頁留一行只放狀態。④ **排序**：分頁列最右邊的膠囊鈕，直接寫出目前的排序「⇅ 排序」→「▲ 漲幅」→「▼ 跌幅」（`prefs.sort`，排序中金底；一開始只有小小的 ⇅，使用者說太小不明顯），只排自選股、指數固定在上，國家段的順序照自選清單不跟著換。使用者要求 **? 使用說明一併更新**：`HELP` 表改成 16 項，照「藏身 → 移動 → 看框（分頁、走勢線、％／點數、排序、市場狀態、變灰、買賣標記）→ 資料（各國個股、延遲）→ 提醒」排；↺ 說明加「預設大小」；六語 README 的「使用」多一項「看框」，⚙ 顯示加走勢線、自選股加後綴範例。⚠ 說明圖示用半形 `%`：全形 `％` 會被「程式碼裡沒有中日韓文字」的測試抓到。使用者說**說明打開太長** → 選方案 A：**分 5 組、可收合**（藏起來／分頁與排版／看懂框裡的字／資料與延遲／提醒），打開時只看到組名＋灰字摘要（`hg.＋組`、`hg.＋組＋Sum`），一次只開一組（`<details name="help">`，Chrome 120 起才互斥，舊版只是能同時開，不會壞），每次打開都從收起來開始；每項縮成一行（`hs.＋項目`），原本的長句放滑鼠提示（`help.＋項目`）；最下面「完整說明（GitHub）→」連到目前語言的 README（`help.readme`）。收起來時 232px、最大的一組展開 394px（原本 16 項全部攤開）。測試改成載入 panel.js，檢查 `HELP` 表用到的每個 key 都有翻譯
+- 2026-11-06：使用者問美股夜盤和台指期（含夜盤），實測見 7.7。美股夜盤沒有免費資料 → 使用者選「兩個都做」：① **美股指數期貨** `ES=F`、`NQ=F`、`YM=F`（指數表加三行，`fut` 市場、延遲 600 秒，放「加密／期貨」分頁，預設開）當夜盤替代 ② **台指期**：新市場 `txf`（日盤 08:45～13:45、夜盤 15:00～隔天 05:00；週一凌晨、週六 05:00 以後、週日沒有）、指數表 `TXF`（群組 `txf`，每 5 秒）、來源 `PSSources.taifex`（POST；`txfSession()`：08:45～15:00 看日盤、其他時間看夜盤；自動取近月合約）。夜盤價格 `from: 'night'`，框上標「夜盤」（`tag.night`），漲跌跟日盤結算比；夜盤照樣觸發提醒（成交量夠，不像美股盤前盤後）。台指期放**台股段和台股分頁**（`prefs.js` 的 `TW = ['tw', 'txf']`），不放「加密／期貨」；走勢線照台股方式自己接（`growLine`）。manifest 多一個網站 `mis.taifex.com.tw`，六語 README 的「只連兩個網站」改三個、資料來源表加兩列。⚠ 請求 body 的「全部」寫成 `'\u5168\u90e8'`：程式碼裡不能有中文（測試會抓）；用 Edit 工具寫 `\u` 跳脫會被轉成真的中文，要用腳本寫。測試 116 項（新增：台指期時段、日夜盤切換、期交所解析與 POST、錯誤代碼、美股期貨、manifest）；測試頁看過「台指期 40,541.00 夜盤 ▲2.24%」，框寬 370 六語、各分頁都放得下
