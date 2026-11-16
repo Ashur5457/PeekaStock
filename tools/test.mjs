@@ -614,39 +614,134 @@ await test('新設定的預設值：走勢線開、漲跌顯示％、自選順�
   PSPrefs.SORT_ORDER.forEach((m) => ['sort', 'sortBtn'].forEach((k) => assert.ok(STRINGS[`${k}.${m}`], `${k}.${m}`)));
 });
 
+await test('備份：匯出再匯入一樣；不是 PeekaStock 的檔案回 null；壞掉的欄位、代號、分頁丟掉', () => {
+  const p = PSPrefs.merge({ stealth: true, tabs: [{ id: 't1', name: 'AI', keys: ['us:NVDA'] }], alerts: { 'us:NVDA': { above: 200 } } });
+  const data = JSON.parse(JSON.stringify(PSPrefs.toBackup(p, '0.8.0', Date.UTC(2026, 10, 17))));
+  assert.equal(data.savedAt, '2026-11-17T00:00:00.000Z');
+  const back = PSPrefs.fromBackup(data);
+  assert.deepEqual(PSPrefs.merge(back), p);
+  assert.equal(PSPrefs.fromBackup({ prefs: p }), null);
+  assert.equal(PSPrefs.fromBackup({ app: 'PeekaStock', prefs: {} }), null);
+  assert.equal(PSPrefs.fromBackup(null), null);
+  const messy = PSPrefs.fromBackup({ app: 'PeekaStock', prefs: {
+    watchlist: [{ market: 'tw', code: '2330', ex: 'tse', name: 7 }, { market: 'tw', code: '2330', ex: 'tse' }, { market: 'tw', code: '2603' },
+      { market: 'us', code: '2330' }, { market: 'jp', code: '7203.T' }, 'AAPL', null],
+    stealth: 'yes', upColor: 'green', evil: '<img>', alerts: [],
+    tabs: [{ id: 't1', name: 'OK', keys: ['jp:7203.T', 3] }, { id: 'x', name: 'bad', keys: [] }, { id: 't2', name: '', keys: [] }],
+  } });
+  assert.deepEqual(messy.watchlist, [{ market: 'tw', code: '2330', ex: 'tse' }, { market: 'jp', code: '7203.T' }]);
+  assert.deepEqual(messy.tabs, [{ id: 't1', name: 'OK', keys: ['jp:7203.T'] }]);
+  assert.equal(messy.upColor, 'green');
+  assert.deepEqual(['stealth', 'evil', 'alerts'].filter((k) => k in messy), []);
+  const many = PSPrefs.fromBackup({ app: 'PeekaStock', prefs: { watchlist: Array.from({ length: 150 }, (_, i) => ({ market: 'tw', code: String(1000 + i), ex: 'tse' })) } });
+  assert.equal(many.watchlist.length, PSPrefs.WATCH_MAX);
+});
+
 console.log('\n提醒（alerts.js）');
 const alertPrefs = (extra = {}) => ({ alerts: {}, moveAlert: { on: true, pct: 3 }, ...extra });
 const stock = { key: 'tw:2330', market: 'tw' };
 const kindsOf = (hits) => hits.map((h) => h.kind).sort();
 await test('到價：剛好等於上限／下限就響；沒設就不響', () => {
   const p = alertPrefs({ alerts: { 'tw:2330': { above: 2400, below: 2300 } }, moveAlert: { on: false, pct: 3 } });
-  const at = (price, prefs = p) => kindsOf(PSAlerts.check([stock], { 'tw:2330': { price, pct: 0 } }, prefs, {}, AT.twOpen));
+  const at = (price, prefs = p) => kindsOf(PSAlerts.check([stock], { 'tw:2330': { price, pct: 0, time: AT.twOpen } }, prefs, {}, AT.twOpen));
   assert.deepEqual(at(2400), ['above']);
   assert.deepEqual(at(2300), ['below']);
   assert.deepEqual(at(2350), []);
   assert.deepEqual(at(9999, alertPrefs({ moveAlert: { on: false, pct: 3 } })), []);
 });
 await test('大漲大跌：±3% 剛好就響，2.99% 不響；關掉就不響', () => {
-  const at = (pct, p = alertPrefs()) => kindsOf(PSAlerts.check([stock], { 'tw:2330': { price: 1, pct } }, p, {}, AT.twOpen));
+  const at = (pct, p = alertPrefs()) => kindsOf(PSAlerts.check([stock], { 'tw:2330': { price: 1, pct, time: AT.twOpen } }, p, {}, AT.twOpen));
   assert.deepEqual(at(3), ['up']);
   assert.deepEqual(at(-3), ['down']);
   assert.deepEqual(at(2.99), []);
   assert.deepEqual(at(5, alertPrefs({ moveAlert: { on: false, pct: 3 } })), []);
 });
 await test('休市不響；同一天響過不再響，隔天會再響', () => {
-  const quotes = { 'tw:2330': { price: 1, pct: 5 } };
+  const quotesAt = (time) => ({ 'tw:2330': { price: 1, pct: 5, time } });
+  const quotes = quotesAt(AT.twOpen);
   assert.deepEqual(PSAlerts.check([stock], quotes, alertPrefs(), {}, AT.twClosed), []);
   const [hit] = PSAlerts.check([stock], quotes, alertPrefs(), {}, AT.twOpen);
   assert.equal(hit.id, 'tw:2330|up|2026-10-28');
   assert.deepEqual(PSAlerts.check([stock], quotes, alertPrefs(), { [hit.id]: true }, AT.twOpen), []);
   const nextDay = AT.twOpen + 86400000;
-  assert.equal(PSAlerts.check([stock], quotes, alertPrefs(), { [hit.id]: true }, nextDay).length, 1);
+  assert.equal(PSAlerts.check([stock], quotesAt(nextDay), alertPrefs(), { [hit.id]: true }, nextDay).length, 1);
   assert.deepEqual(PSAlerts.prune({ [hit.id]: true }, AT.twOpen), { [hit.id]: true });
   assert.deepEqual(PSAlerts.prune({ [hit.id]: true }, nextDay + 86400000), {});
 });
-await test('背景提醒只抓要看的：大漲大跌開著＝全部；關著＝只有設了到價的', () => {
+await test('上一個交易日留下來的報價不響：剛開盤、國定假日、延遲的指數開盤後那 15 分鐘；沒有資料時間也不響', () => {
+  const day = 86400000;
+  const hits = (item, q, now) => PSAlerts.check([item], { [item.key]: { price: 1, pct: 5, ...q } }, alertPrefs(), {}, now).length;
+  assert.equal(hits(stock, { time: AT.twOpen - day + 4 * 3600000 }, AT.twOpen), 0);   // 昨天 13:30 的收盤
+  assert.equal(hits(stock, { time: AT.twOpen - 60000 }, AT.twOpen), 1);               // 今天 09:29
+  assert.equal(hits(stock, {}, AT.twOpen), 0);
+  const us = { key: 'us:NVDA', market: 'us' };
+  const thanksgiving = Date.UTC(2026, 10, 26, 16, 0);   // 美東 11:00，感恩節休市，報價停在前一天收盤
+  assert.equal(hits(us, { time: Date.UTC(2026, 10, 25, 21, 0) }, thanksgiving), 0);
+  const n225 = { key: 'idx:^N225', market: 'jp', delay: 900 };
+  const jst = (h, m, d = 28) => Date.UTC(2026, 9, d, h - 9, m);
+  assert.equal(hits(n225, { time: jst(15, 30, 27) }, jst(9, 5)), 0);    // 09:05 看到的還是昨天收盤
+  assert.equal(hits(n225, { time: jst(9, 1) }, jst(9, 16)), 1);         // 09:16 看到 09:01 的資料
+  assert.equal(hits(n225, { time: jst(15, 29) }, jst(15, 40)), 1);      // 收盤後還在看收盤前的資料
+});
+await test('跨午夜的市場：台指期夜盤、美股期貨過午夜是同一個交易日（不再響一次）；日盤和夜盤各算一次；只看 30 分鐘內的報價', () => {
+  const txf = { key: 'idx:TXF', market: 'txf' };
+  const tpe = (d, h, m) => Date.UTC(2026, 10, d, h - 8, m);
+  const idAt = (item, now) => PSAlerts.check([item], { [item.key]: { price: 1, pct: 5, time: now - 2000 } }, alertPrefs(), {}, now)[0]?.id;
+  assert.equal(idAt(txf, tpe(12, 23, 50)), 'idx:TXF|up|2026-11-13');
+  assert.equal(idAt(txf, tpe(13, 0, 10)), 'idx:TXF|up|2026-11-13');
+  assert.equal(idAt(txf, tpe(12, 10, 0)), 'idx:TXF|up|2026-11-12');   // 同一天的日盤
+  const fired = { 'idx:TXF|up|2026-11-13': true };
+  assert.deepEqual(PSAlerts.prune(fired, tpe(12, 23, 50)), fired);    // 還沒過午夜也不能被清掉
+  assert.deepEqual(PSAlerts.prune(fired, tpe(13, 4, 0)), fired);
+  const es = { key: 'idx:ES=F', market: 'fut', delay: 600 };
+  const et = (d, h, m) => Date.UTC(2026, 10, d, h + 5, m);            // 美東冬令時間
+  assert.equal(idAt(es, et(11, 23, 50)), idAt(es, et(12, 0, 10)));
+  // 週一 08:45 日盤開盤，報價還停在週六 05:00 夜盤收盤 → 不響
+  const stale = { [txf.key]: { price: 1, pct: 5, time: tpe(14, 5, 0) } };
+  assert.deepEqual(PSAlerts.check([txf], stale, alertPrefs(), {}, tpe(16, 8, 46)), []);
+});
+await test('國定假日：開盤 30 分鐘（加延遲）後同一個市場全部都是舊資料＝休市；只有一檔舊的不算；隔天自動失效', () => {
+  const us = [{ key: 'us:AAPL', market: 'us' }, { key: 'idx:^GSPC', market: 'us', delay: 0 }];
+  const open = Date.UTC(2026, 10, 26, 14, 30);   // 感恩節 09:30（美東冬令時間）
+  const old = Date.UTC(2026, 10, 25, 21, 0);
+  const qs = (fetchedAt, time = old) => Object.fromEntries(us.map((i) => [i.key, { time, fetchedAt }]));
+  const at = open + 31 * 60000;
+  assert.deepEqual(PSMarkets.holidays(us, qs(at), at), { us: open });
+  assert.deepEqual(PSMarkets.holidays(us, qs(open + 10 * 60000), open + 10 * 60000), {});   // 還沒滿 30 分鐘
+  assert.deepEqual(PSMarkets.holidays(us, { ...qs(at), 'idx:^GSPC': { time: at - 5000, fetchedAt: at } }, at), {});
+  assert.deepEqual(PSMarkets.holidays(us, { 'us:AAPL': qs(at)['us:AAPL'] }, at), {});   // 有一檔還沒抓到
+  const n225 = [{ key: 'idx:^N225', market: 'jp', delay: 900 }];
+  const jpOpen = Date.UTC(2026, 10, 23, 0, 0);   // 勤勞感謝の日（きんろうかんしゃのひ）的振替休日
+  const jq = (t) => ({ 'idx:^N225': { time: jpOpen - 86400000, fetchedAt: t } });
+  assert.deepEqual(PSMarkets.holidays(n225, jq(jpOpen + 40 * 60000), jpOpen + 40 * 60000), {});   // 延遲 15 分：要 45 分鐘
+  assert.deepEqual(PSMarkets.holidays(n225, jq(jpOpen + 46 * 60000), jpOpen + 46 * 60000), { jp: jpOpen });
+  const crypto = PSMarkets.INDICES.filter((i) => i.market === 'crypto' || i.market === 'fut');
+  assert.deepEqual(PSMarkets.holidays(crypto, {}, at), {});
+  assert.equal(PSMarkets.isHoliday('us', at, { us: open }), true);
+  assert.equal(PSMarkets.isHoliday('us', at + 86400000, { us: open }), false);
+  // 排程：假日不再每 5 秒抓，30 分鐘問一次
+  const plan = [{ id: 'us', every: 5000, items: [us[0]] }];
+  const have = { 'us:AAPL': { time: old, fetchedAt: at } };
+  assert.equal(PSSchedule.due(plan, at + 5000, {}, have, { us: open }).length, 0);
+  assert.equal(PSSchedule.due(plan, at + 5000, {}, have).length, 1);
+  assert.equal(PSSchedule.due(plan, at + PSSchedule.REFRESH, {}, have, { us: open }).length, 1);
+});
+await test('收盤後再多抓 5 分鐘才停：收盤價是收盤後才出來的（台股 13:30、美股指數 16:00、台指期 13:45）', () => {
+  const due = (item, now) => PSSchedule.due([{ id: 'x', every: 5000, items: [item] }], now, {}, { [item.key]: { price: 1, fetchedAt: now - 5000 } }).length;
+  const tpe = (h, m, sec = 0) => Date.UTC(2026, 9, 28, h - 8, m, sec);
+  assert.equal(PSSchedule.GRACE_SEC, 300);
+  assert.deepEqual([tpe(13, 30, 3), tpe(13, 34, 59), tpe(13, 35, 1)].map((at) => due(stock, at)), [1, 1, 0]);
+  const txf = { key: 'idx:TXF', market: 'txf' };
+  assert.deepEqual([tpe(13, 46), tpe(13, 51)].map((at) => due(txf, at)), [1, 0]);
+  const spx = { key: 'idx:^GSPC', market: 'us', delay: 0 };
+  const edt = (h, m) => Date.UTC(2026, 9, 28, h + 4, m);   // 美東夏令時間
+  assert.deepEqual([edt(16, 2), edt(16, 6)].map((at) => due(spx, at)), [1, 0]);
+  assert.equal(PSMarkets.isOpen('tw', tpe(13, 31)), false);   // 畫面上還是休市，不響提醒
+});
+await test('背景提醒只抓有設到價的（大漲大跌開著也不會抓全部）', () => {
   const list = PSPrefs.items(PSPrefs.DEFAULT);
-  assert.equal(PSAlerts.watched(list, alertPrefs()).length, list.length);
+  assert.deepEqual(PSAlerts.watched(list, alertPrefs()), []);
+  assert.deepEqual(PSAlerts.watched(list, alertPrefs({ alerts: { 'tw:2330': { above: 1 } } })).map((i) => i.key), ['tw:2330']);
   const only = PSAlerts.watched(list, alertPrefs({ alerts: { 'us:AAPL': { above: 1 } }, moveAlert: { on: false, pct: 3 } }));
   assert.deepEqual(only.map((i) => i.key), ['us:AAPL']);
 });
@@ -821,7 +916,7 @@ await test('盤前來源：每檔一個請求、帶 _、最多 20 檔；一檔�
 });
 await test('盤前盤後的價格不觸發提醒', () => {
   const p = alertPrefs({ alerts: { 'tw:2330': { above: 1 } } });
-  const at = (from) => PSAlerts.check([stock], { 'tw:2330': { price: 2, pct: 9, from } }, p, {}, AT.twOpen).length;
+  const at = (from) => PSAlerts.check([stock], { 'tw:2330': { price: 2, pct: 9, from, time: AT.twOpen } }, p, {}, AT.twOpen).length;
   assert.equal(at('pre'), 0);
   assert.equal(at('post'), 0);
   assert.ok(at('trade') > 0);
@@ -852,6 +947,11 @@ await test('期交所解析（真實樣本）：跳過現貨、取近月；夜�
   assert.equal(PSSources.taifexTime('20261106', '202047'), Date.UTC(2026, 10, 6, 12, 20, 47));
   assert.equal(PSSources.taifexTime('20261107', '84500'), Date.UTC(2026, 10, 7, 0, 45, 0));   // 凌晨／早上只有 5 位數
   assert.equal(PSSources.taifexTime('', ''), null);
+  // 夜盤過午夜：日期還是這一盤開始的那天（實測），時間要算到隔天；月底、週五夜盤到週六也一樣
+  assert.equal(PSSources.taifexTime('20261116', '000014', 'night'), Date.UTC(2026, 10, 16, 16, 0, 14));
+  assert.equal(PSSources.taifexTime('20261130', '45959', 'night'), Date.UTC(2026, 10, 30, 20, 59, 59));
+  assert.equal(PSSources.taifexTime('20261116', '235828', 'night'), Date.UTC(2026, 10, 16, 15, 58, 28));
+  assert.equal(PSSources.taifexTime('20261116', '084500', 'day'), Date.UTC(2026, 10, 16, 0, 45, 0));
 });
 await test('期交所：還沒成交用最佳買價；沒有期貨合約 → 不回報價', () => {
   const rows = structuredClone(TAIFEX.day);
@@ -882,9 +982,13 @@ await test('manifest：多連期交所一個網站', () => {
 console.log('\n背景程式（tick → 抓取 → storage.session）');
 globalThis.fetch = fakeFetch;
 load('sw.js');
+// 測試樣本的資料時間是舊的：判斷國定假日的結果會看現在幾點，所以預設關掉（只在專門的測試打開），測試才不會隨時間變
+const realHolidays = PSMarkets.holidays;
+PSMarkets.holidays = () => ({});
 const realExt = PSMarkets.extSession;
 PSMarkets.extSession = () => null;   // 下面的測試不要受「現在幾點」影響；需要時各自打開
 const session = chrome.storage.session.data;
+const local = chrome.storage.local.data;
 const tickOnce = async () => {
   messageListeners.forEach((cb) => cb({ to: 'sw', cmd: 'tick' }));
   for (let i = 0; i < 50 && running; i += 1) await sleep(10);   // running 是 sw.js 裡「正在抓」的那次
@@ -924,16 +1028,26 @@ await test('MIS 失敗 → status 記錯誤和次數，其他群組照常', asyn
   assert.equal(session.status.us.ok, true);
   globalThis.fetch = fakeFetch;
 });
-await test('藏身鍵：快捷鍵、點圖示、框上的 👁 都切換 hidden', async () => {
+await test('tick 後存 holidays（測試樣本的資料時間是舊的，結果看現在幾點；只會有有時段表的市場）', async () => {
+  Object.keys(state).forEach((k) => { state[k].last = 0; });
+  PSMarkets.holidays = realHolidays;
+  await tickOnce();
+  PSMarkets.holidays = () => ({});
+  assert.equal(typeof session.holidays, 'object');
+  assert.ok(Object.keys(session.holidays).every((m) => PSMarkets.MARKETS[m].hours), JSON.stringify(session.holidays));
+  await chrome.storage.session.set({ holidays: {} });
+});
+await test('藏身鍵：快捷鍵、點圖示、框上的 👁 都切換 hidden；存在 storage.local（Chrome 重開後還是藏著）', async () => {
   commandListeners.forEach((cb) => cb('toggle-hide'));
   await sleep(20);
-  assert.equal(session.hidden, true);
+  assert.equal(local.hidden, true);
   actionListeners.forEach((cb) => cb({}));
   await sleep(20);
-  assert.equal(session.hidden, false);
+  assert.equal(local.hidden, false);
+  assert.equal('hidden' in session, false);
   messageListeners.forEach((cb) => cb({ to: 'sw', cmd: 'toggleHidden' }));
   await sleep(20);
-  assert.equal(session.hidden, true);
+  assert.equal(local.hidden, true);
 });
 await test('藏起來時 tick 不發任何請求；叫出來後照常抓', async () => {
   Object.keys(state).forEach((k) => { state[k].last = 0; });
@@ -941,7 +1055,7 @@ await test('藏起來時 tick 不發任何請求；叫出來後照常抓', async
   calls.length = 0;
   await tickOnce();
   assert.equal(calls.length, 0);
-  await chrome.storage.session.set({ hidden: false });
+  await chrome.storage.local.set({ hidden: false });
   await tickOnce();
   assert.ok(calls.length > 0);
 });
@@ -1018,20 +1132,24 @@ await test('MIS 延遲統計：台股盤中才算，分到正確的格子', () =
 await test('提醒：抓到報價後放進佇列，只放一次；框顯示完送 dismissAlert 拿掉', async () => {
   const realOpen = PSMarkets.isOpen;
   PSMarkets.isOpen = () => true;
-  await chrome.storage.session.set({ hidden: false, alertQueue: [], alertFired: {} });
+  const realFresh = PSMarkets.freshFrom;
+  PSMarkets.freshFrom = () => 0;   // 測試樣本的資料時間是舊的
+  await chrome.storage.local.set({ hidden: false });
+  await chrome.storage.session.set({ alertQueue: [], alertFired: {} });
   await PSPrefs.update({ alerts: { 'us:AAPL': { above: 1 } }, moveAlert: { on: false, pct: 3 } });
   for (const _ of [1, 2]) {
     Object.keys(state).forEach((k) => { state[k].last = 0; });
     await tickOnce();
   }
   PSMarkets.isOpen = realOpen;
+  PSMarkets.freshFrom = realFresh;
   assert.deepEqual(session.alertQueue.map((a) => [a.key, a.kind]), [['us:AAPL', 'above']]);
   messageListeners.forEach((cb) => cb({ to: 'sw', cmd: 'dismissAlert', id: session.alertQueue[0].id }));
   await sleep(20);
   assert.deepEqual(session.alertQueue, []);
 });
 await test('盤前時段：只多抓自選美股（指數不抓），價格標 pre；時段外不發這種請求', async () => {
-  await chrome.storage.session.set({ hidden: false });
+  await chrome.storage.local.set({ hidden: false });
   await chrome.storage.local.set({ prefs: PSPrefs.merge({}) });
   PSMarkets.extSession = () => 'pre';
   Object.keys(state).forEach((k) => { state[k].last = 0; });
@@ -1084,7 +1202,7 @@ await test('背景提醒：打開才設鬧鐘；鬧鐘響時框藏著也抓，�
   assert.deepEqual(alarms.bgAlert, { periodInMinutes: 1 });
   const realOpen = PSMarkets.isOpen;
   PSMarkets.isOpen = () => true;
-  await chrome.storage.session.set({ hidden: true });
+  await chrome.storage.local.set({ hidden: true });
   await PSPrefs.update({ alerts: { 'us:AAPL': { above: 1 } }, moveAlert: { on: false, pct: 3 } });
   PSMarkets.extSession = () => 'pre';   // 背景提醒不抓盤前盤後
   Object.keys(state).forEach((k) => { state[k].last = 0; });

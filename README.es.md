@@ -4,7 +4,7 @@
 
 **Ventana flotante que se puede mover y redimensionar**, **tecla para ocultar**, **modo discreto**, **alertas de precio y grandes movimientos**, **lista de seguimiento con pestañas propias** e interfaz en seis idiomas. Solo cotizaciones: no opera.
 
-[![Version](https://img.shields.io/badge/version-v0.7.0-FFC23D)](manifest.json)
+[![Version](https://img.shields.io/badge/version-v0.8.0-FFC23D)](manifest.json)
 [![Chrome](https://img.shields.io/badge/Chrome-desktop-4285F4)](#-instalación)
 [![Free](https://img.shields.io/badge/free-no%20API%20key-2f8a4b)](#-privacidad)
 [![License](https://img.shields.io/badge/license-MIT-5C4033)](LICENSE)
@@ -117,6 +117,7 @@ Pulsa el botón de pieza de puzle 🧩 de la barra y fija PeekaStock (el icono o
    - **Índices**: actívalos o desactívalos uno a uno
    - **Alertas**: grandes movimientos ±% (3% por defecto); para una alerta de precio pulsa 🔔 en la fila y fija un precio superior/inferior; con «En segundo plano» activado, los valores con alerta se comprueban cada minuto aunque no veas la ventana (solo con el mercado abierto) y el aviso aparece la próxima vez que la veas
    - **Vista**: idioma, colores y minigráficos
+   - **Copia de seguridad**: exporta tu lista, pestañas, alertas y ajustes a un archivo e impórtalo en otro equipo
 4. **Tecla para ocultar Alt+Shift+H**: oculta la ventana en todas las pestañas; pulsa otra vez para mostrarla. El icono de PeekaStock hace lo mismo.
 
 <img src="docs/readme/panel.png" width="480" alt="Panel de ajustes">
@@ -135,7 +136,7 @@ Chrome avisa de que PeekaStock puede «leer y cambiar todos tus datos de todos l
 ## ⚠️ Limitaciones conocidas
 
 - **Todas las fuentes son interfaces no oficiales**: si la Bolsa de Taiwán, la de Futuros o Yahoo cambian el formato, las cotizaciones pueden dejar de llegar; la ventana muestra el error abajo.
-- **No se tienen en cuenta los festivos**: en un festivo verás el cierre de la sesión anterior.
+- **No hay calendario de festivos**: un mercado se da por cerrado solo si ninguna de sus cotizaciones tiene datos nuevos 30 minutos después de la apertura (más el retraso en los índices diferidos); hasta entonces aparece «Abierto». En un festivo verás el cierre de la sesión anterior.
 - **Los precios de EE. UU.** son precios en tiempo real de un único mercado (Nasdaq) y pueden diferir ligeramente del precio consolidado de tu bróker.
 - **Los índices fuera de EE. UU.** ya llegan con 15–20 minutos de retraso en Yahoo.
 - **Las acciones de otros mercados** también llegan casi siempre con 15–20 minutos de retraso; Londres, Sudáfrica e Israel cotizan en peniques/céntimos, como sus bolsas, sin convertir.

@@ -60,7 +60,7 @@ chrome-ext-dev\
 - 已知畫不出來的頁面：`chrome://`、新分頁、Chrome 線上應用程式商店、內建 PDF 檢視器
 
 ### 2.5 隱藏（「上班」的核心）
-1. **藏身鍵**：`chrome.commands`（預設建議 Alt+Shift+H，使用者可在 `chrome://extensions/shortcuts` 改）。一按，所有分頁的框同時隱藏或顯示（狀態存 `chrome.storage.session`）
+1. **藏身鍵**：`chrome.commands`（預設建議 Alt+Shift+H，使用者可在 `chrome://extensions/shortcuts` 改）。一按，所有分頁的框同時隱藏或顯示（狀態存 `chrome.storage.local` 的 `hidden`，Chrome 重開後還是藏著；2026-11-12 以前存 `storage.session`）
 2. **隱身模式**：背景透明、文字灰色、漲跌不用紅綠改 ▲▼，看起來像一般網頁文字
 3. **工具列滑鼠移上才出現**：沿用 FreeLiveSub 的 `barAutoHide`
 4. 候選（之後再做）：視窗失去焦點時數字自動打碼成 `…`；放開快捷鍵就隱藏
@@ -116,18 +116,18 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 
 每個來源只是一個函式：`(symbols) => Promise<quote[]>`。來源壞了，只換這一個函式。
 
-### 3.2 目前檔案（v0.7）
+### 3.2 目前檔案（v0.8）
 
 | 檔案 | 作用 |
 |---|---|
-| `manifest.json` | MV3 v0.7.0；`icons`／`action.default_icon`；說明、圖示提示、快捷鍵說明用 `__MSG_…__`（`default_locale: en`）；權限 `storage`、`alarms`（背景提醒）；`commands`（toggle-hide）、`action`（點圖示＝隱藏／顯示）；`host_permissions` 只有證交所 MIS、期交所 MIS（`mis.taifex.com.tw`，台指期）和 `query1.finance.yahoo.com`；content script 比對 `<all_urls>`，載入順序 i18n → markets → prefs → box → blank → panel → overlay |
+| `manifest.json` | MV3 v0.8.0；`icons`／`action.default_icon`；說明、圖示提示、快捷鍵說明用 `__MSG_…__`（`default_locale: en`）；權限 `storage`、`alarms`（背景提醒）；`commands`（toggle-hide）、`action`（點圖示＝隱藏／顯示）；`host_permissions` 只有證交所 MIS、期交所 MIS（`mis.taifex.com.tw`，台指期）和 `query1.finance.yahoo.com`；content script 比對 `<all_urls>`，載入順序 i18n → markets → prefs → box → blank → panel → overlay |
 | `_locales/*/messages.json` | manifest 的六語文字（en、zh_TW、zh_CN、ja、ko、es）：`extDescription`、`actionTitle`、`cmdToggleHide` |
 | `i18n.js` | `PSI18n`（架構沿用 FreeLiveSub）：每個 key 一行、6 欄（zh-Hant、en、zh-Hans、ja、ko、es）；`t(key, vars)`、`apply(root)`（`data-i18n`／`data-i18n-title`／`data-i18n-placeholder`）、`resolve('auto')` 依瀏覽器語言。指數名稱 `idx.＋代號`、地區 `mkt.＋市場`、錯誤 `err.＋代碼` |
 | `markets.js` | `PSMarkets`：市場表（時區、交易時段）、指數表 `INDICES`（市場、抓取群組、代號、`nameKey`、`delay`）、`isOpen(market, now, quote?, delay?)`（`byDay`＝不是週一到週五的市場：加密貨幣 24 小時、CME 期貨；沒寫時段的市場 `byQuote()` 看報價的 `period`；`delay`＝收盤後再多算幾秒）、`extSession()`（美股盤前盤後）；其他國家個股的後綴表 `SUFFIX`（後綴 → 市場、延遲秒數）與 `suffixOf()` |
-| `prefs.js` | `PSPrefs`：預設自選（2330、6488、AAPL、NVDA）、指數開關、隱身、目前分頁 `tab`、自創分頁 `tabs`、介面語言 `uiLang`（auto）、漲跌顏色 `upColor`（red）、迷你模式 `mini`、到價提醒 `alerts`（`{ key: { above?, below? } }`）、大漲大跌 `moveAlert`（`{ on: true, pct: 3 }`）、背景提醒 `bgAlert`（false）；load／update／watch／merge；純函式：`items()`（設定 → 項目）、`sections()`（台股／美股／國際指數分段）、`labelOf()`（美股顯示代號、台股顯示名稱）、`classify()`（代號屬於哪個市場）、`addWatch`／`removeWatch`／`moveWatch`、分頁 `visibleTabs`／`currentTab`／`tabError`／`addTab`／`renameTab`／`removeTab`／`moveTab`／`setInTab`／`forgetKey`；自選上限 100、自創分頁上限 10、名稱 8 字 |
+| `prefs.js` | `PSPrefs`：預設自選（2330、6488、AAPL、NVDA）、指數開關、隱身、目前分頁 `tab`、自創分頁 `tabs`、介面語言 `uiLang`（auto）、漲跌顏色 `upColor`（red）、迷你模式 `mini`、到價提醒 `alerts`（`{ key: { above?, below? } }`）、大漲大跌 `moveAlert`（`{ on: true, pct: 3 }`）、背景提醒 `bgAlert`（false）；load／update／watch／merge；純函式：`items()`（設定 → 項目）、`sections()`（台股／美股／國際指數分段）、`labelOf()`（美股顯示代號、台股顯示名稱）、`classify()`（代號屬於哪個市場）、`addWatch`／`removeWatch`／`moveWatch`、分頁 `visibleTabs`／`currentTab`／`tabError`／`addTab`／`renameTab`／`removeTab`／`moveTab`／`setInTab`／`forgetKey`；自選上限 100、自創分頁上限 10、名稱 8 字；備份 `toBackup()`／`fromBackup()`（匯入時只收認得的欄位、型別要對、代號要合規） |
 | `sources.js` | `PSSources`：`mis()`、`spark()`、`ext()`（美股盤前盤後，v8 chart，每檔一請求、最多 20 檔、一檔失敗不影響其他）與各自的解析函式；`LOOKUP`（新增自選時查代號：台股一次問 tse_／otc_）；錯誤一律帶代碼 `{ code: http／notJson／mis／timeout／other, src, detail }`，框依介面語言翻成文字 |
 | `schedule.js` | `PSSchedule.due()`：純函式，決定這次 tick 要抓哪些群組、哪些項目；退避 |
-| `sw.js` | 背景程式：收 tick → 排程 → 抓取 → 寫 `storage.session` 的 `quotes`／`status`／`misLag`；藏身鍵 `toggleHidden()`（`hidden`）；抓完檢查提醒 → `alertQueue`（最多 20 個）／`alertFired`（今天響過的），框顯示完送 `dismissAlert`；背景提醒打開時 `chrome.alarms` 每 1 分鐘只抓 `PSAlerts.watched()`（框藏著也抓）；`lookup` 指令（要回覆的指令放 `REPLIES`）；開放 session 給 content script 讀 |
+| `sw.js` | 背景程式：收 tick → 排程 → 抓取 → 寫 `storage.session` 的 `quotes`／`status`／`misLag`；藏身鍵 `toggleHidden()`（`storage.local` 的 `hidden`）；抓完檢查提醒 → `alertQueue`（最多 20 個）／`alertFired`（今天響過的），框顯示完送 `dismissAlert`；背景提醒打開時 `chrome.alarms` 每 1 分鐘只抓 `PSAlerts.watched()`（有設到價提醒的，框藏著也抓）；每次抓完算國定假日存 `holidays`；`lookup` 指令（要回覆的指令放 `REPLIES`）；開放 session 給 content script 讀 |
 | `alerts.js` | `PSAlerts`：提醒規則表 `RULES`（above／below／up／down）、`check()`（只看盤中，提醒 id＝`key|kind|交易所當地日期`，一天一次）、`watched()`、`prune()`；只有 sw.js 載入 |
 | `blank.js` | `PSBlank`：網頁裡的藏身觸發。`isBlank()`＝空白處點兩下（沒選到字、不在輸入框／連結／影片／畫布等 `SKIP` 元素、不是網頁自己處理掉的、不在框裡；`prefs.dblHide`，預設開）；`keyFires()`／`isTyping()`／`keyLabel()`／`recorded()`＝網頁內按鍵（`prefs.hideKey`，預設 Esc 連按兩下、0.4 秒內，設定面板可錄製別的鍵；輸入框裡按的、按住不放、網頁處理掉的不算） |
 | `box.js` | `PSBox`：懸浮框位置大小的純函式（搬自 FreeLiveSub，可在 Node 測） |
@@ -136,6 +136,7 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 | `panel.js` | `PSPanel`：⚙ 設定面板（自選股新增／刪除／排序／🔔 到價提醒（就地展開上下限）、自創分頁新增／改名／排序／刪除／勾選內容、指數開關、提醒：大漲大跌 ±%（0.5～20）與背景提醒、顯示：介面語言與漲跌顏色），放在框的下、上、左、右第一個放得下的位置 |
 | `tools/probe.mjs` | v0.1 資料來源實測；結果存 `tools/probe-results/`、原始回應存 `tools/samples/`（兩者都不上傳） |
 | `tools/test.mjs` | `node tools/test.mjs`：測試 |
+| `.github/workflows/test.yml` | GitHub Actions：每次 push、PR 都跑 `node tools/test.mjs` |
 | `tools/fixtures/` | 測試用的真實回應（從 `tools/samples/` 縮減，只留測試用到的欄位，約 8 KB；會上傳） |
 | `README*.md` | 六語 README（格式照 FreeLiveSub）：為什麼做、能做什麼、資料來源與延遲、安裝、使用、權限、已知限制、隱私、免責聲明、檔案結構、開發 |
 | `LICENSE` | MIT © 2026 Ashur5457 |
@@ -388,7 +389,7 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
   - 回應 `RtData.QuoteList`：第一筆是現貨（日盤 `TXF-S`、夜盤 `TXF-P`），之後照到期月排（`TXFK6-F`＝日盤 2026-11、`TXFK6-M`＝夜盤），第一個期貨合約就是近月
   - 欄位：`CLastPrice` 成交價、`CRefPrice` 參考價（夜盤的參考價是日盤結算）、`CDiff`／`CDiffRate` 漲跌、`CBestBidPrice`／`CBestAskPrice`、`CDate`（`20261106`）＋`CTime`（`202047`，台北時間）、`DispCName`（`臺指期116`）
   - 延遲：夜盤成交時間和現在只差 **2 秒**（即時）
-  - ⚠ 還沒實測：凌晨 00:00～05:00 的 `CDate` 是日曆日期還是交易日（目前照日曆日期算，20:20 時是當天日期）；CTime 早上可能只有 5 位數（`84500`），已先補 0
+  - ✅ **2026-11-17 00:00 實測：過了午夜 `CDate` 還是前一天**（`20261116`＋`000014`，是「這一盤開始的那天」）→ 夜盤 15:00 以前的時間要算到隔天（`taifexTime(date, time, session)`）。原本照日曆日期算，凌晨的資料時間會早 24 小時（整列變灰、提醒不響）；修正後實測延遲 0 秒。CTime 是 6 位數（`000014`），早上可能只有 5 位數（`84500`）照樣補 0
 
 ### 7.3 目前結論：正式版用哪個端點
 
@@ -425,3 +426,5 @@ quote = { name, price, prev, chg, pct, time, fetchedAt }
 - 2026-11-04：加入**其他國家個股**（Yahoo spark 抓得到的 43 個交易所，實測見 7.6）。使用者照建議選：價格單位照 Yahoo 給的（便士、分，不換算，提示標幣別）、全部交易所都支援。**使用者看完說明後改**：不用「國際個股」這種統稱，**每個國家一段、用該國股市的叫法**（港股、日股、韓股、陸股…，i18n 的 `stk.＋市場`，接在美股後面，照自選清單裡第一次出現的順序）；**只出現在「全部」分頁**（和自創分頁），「國際」分頁只放指數。**國際指數也照同樣處理**（使用者同意）：指數表填實測延遲（陸、港、日、星、英、法、德 900 秒，韓 1200 秒），盤中不再整列變灰，收盤後也多抓到延遲結束才拿得到收盤價；? 說明的「變灰」改成「比平常多舊 2 分鐘以上」。做法：代號帶 Yahoo 後綴（`7203.T`），`classify()` 先查 `SUFFIX`，`BRK.B` 這種美股照舊；`2330.TW`／`6488.TWO` 去掉後綴當台股；抓取群組 `gl`（spark，每 30 秒）；已有時段表的市場（日、港、陸、韓、星、英、法、德）照表，其他看報價的交易時段（國定假日也算進去）；`isOpen` 加 `delay`：延遲 15 分的市場收盤後再抓 15 分鐘，才拿得到收盤價。資源：同一時間只有開盤的市場在抓，每 20 檔一個請求
 - 2026-11-04：參考 Robinhood 做四個看盤功能（使用者照建議選）。① **迷你走勢線**放在名稱和價格之間的獨立一欄（40×16 的 SVG，實色線；所有列都有這格才對得齊，關掉或隱身模式整欄拿掉）。一開始畫成整列的背景圖（不占寬度），**使用者實測說位置奇怪、又不明顯**：線穿過文字像刪除線，調淡又看不到 → 改獨立一欄，使用者選這個方案；寬度從時間欄改「時:分」（秒放提示）、名稱欄 6.5em → 6em、**預設框寬 320 → 370**（350 時英韓西還會多 15px，370 六語都放得下；已經存過大小的框不會自己變寬）。spark 回應本來就有每 5 分鐘收盤價，存成 `quote.line = [[秒, 價格]…]`，不多發請求；台股 MIS 沒有歷史，sw.js 的 `growLine` 把每次抓到的價格接起來（只有框看得見時，換日清掉，最多 600 點）；盤前盤後沿用 spark 的線；橫軸 `lineDomain()`（有時段表用當天時段；Yahoo 時段收盤後會跳到隔天，所以只在包住整條線時用）；昨收畫虛線；⚙「顯示 → 走勢線」可關。② **點漲跌欄切換 ％／點數**（`prefs.chgMode`，pointerdown）；點數 100 以上不顯示小數，欄寬才不超過％。③ **市場狀態**（`PSMarkets.phase`：盤前、盤中、午休、盤後、休市）放段標題旁；國際指數、加密貨幣不標；只有一段的分頁留一行只放狀態。④ **排序**：分頁列最右邊的膠囊鈕，直接寫出目前的排序「⇅ 排序」→「▲ 漲幅」→「▼ 跌幅」（`prefs.sort`，排序中金底；一開始只有小小的 ⇅，使用者說太小不明顯），只排自選股、指數固定在上，國家段的順序照自選清單不跟著換。使用者要求 **? 使用說明一併更新**：`HELP` 表改成 16 項，照「藏身 → 移動 → 看框（分頁、走勢線、％／點數、排序、市場狀態、變灰、買賣標記）→ 資料（各國個股、延遲）→ 提醒」排；↺ 說明加「預設大小」；六語 README 的「使用」多一項「看框」，⚙ 顯示加走勢線、自選股加後綴範例。⚠ 說明圖示用半形 `%`：全形 `％` 會被「程式碼裡沒有中日韓文字」的測試抓到。使用者說**說明打開太長** → 選方案 A：**分 5 組、可收合**（藏起來／分頁與排版／看懂框裡的字／資料與延遲／提醒），打開時只看到組名＋灰字摘要（`hg.＋組`、`hg.＋組＋Sum`），一次只開一組（`<details name="help">`，Chrome 120 起才互斥，舊版只是能同時開，不會壞），每次打開都從收起來開始；每項縮成一行（`hs.＋項目`），原本的長句放滑鼠提示（`help.＋項目`）；最下面「完整說明（GitHub）→」連到目前語言的 README（`help.readme`）。收起來時 232px、最大的一組展開 394px（原本 16 項全部攤開）。測試改成載入 panel.js，檢查 `HELP` 表用到的每個 key 都有翻譯
 - 2026-11-06：使用者問美股夜盤和台指期（含夜盤），實測見 7.7。美股夜盤沒有免費資料 → 使用者選「兩個都做」：① **美股指數期貨** `ES=F`、`NQ=F`、`YM=F`（指數表加三行，`fut` 市場、延遲 600 秒，放「加密／期貨」分頁，預設開）當夜盤替代 ② **台指期**：新市場 `txf`（日盤 08:45～13:45、夜盤 15:00～隔天 05:00；週一凌晨、週六 05:00 以後、週日沒有）、指數表 `TXF`（群組 `txf`，每 5 秒）、來源 `PSSources.taifex`（POST；`txfSession()`：08:45～15:00 看日盤、其他時間看夜盤；自動取近月合約）。夜盤價格 `from: 'night'`，框上標「夜盤」（`tag.night`），漲跌跟日盤結算比；夜盤照樣觸發提醒（成交量夠，不像美股盤前盤後）。台指期放**台股段和台股分頁**（`prefs.js` 的 `TW = ['tw', 'txf']`），不放「加密／期貨」；走勢線照台股方式自己接（`growLine`）。manifest 多一個網站 `mis.taifex.com.tw`，六語 README 的「只連兩個網站」改三個、資料來源表加兩列。⚠ 請求 body 的「全部」寫成 `'\u5168\u90e8'`：程式碼裡不能有中文（測試會抓）；用 Edit 工具寫 `\u` 跳脫會被轉成真的中文，要用腳本寫。測試 116 項（新增：台指期時段、日夜盤切換、期交所解析與 POST、錯誤代碼、美股期貨、manifest）；測試頁看過「台指期 40,541.00 夜盤 ▲2.24%」，框寬 370 六語、各分頁都放得下
+- 2026-11-12：全專案檢查後修四項（使用者同意「修 1～4」），測試 119 項。① **提醒不再把上一個交易日的漲跌再響一次**：原本只看「現在是不是盤中」，沒看報價是不是這個交易時段的，所以延遲 15 分的指數開盤後那 15 分鐘、國定假日、剛開盤的頭幾秒，昨天的 ±3% 會再響。`PSMarkets.freshFrom()`＝這個交易時段的報價最早從什麼時候算（有時段表＝今天第一段開盤；看報價時段的市場＝報價附的開盤；跨午夜的期貨、加密貨幣＝最近 30 分鐘內），`alerts.js` 的 `isFresh` 用它擋掉舊報價，沒有資料時間的報價也不響。提醒 id 的日期改用交易日 `tradeDay()`：市場表的 `dayShift`（台指期 9 小時、CME 期貨 6 小時），夜盤過午夜不會再響；日盤和夜盤各算一次。② **收盤後多抓 5 分鐘**（`schedule.js` 的 `GRACE_SEC`）：收盤價是收盤後才出來的（台股 13:25～13:30 集合競價、美股指數收盤後幾分鐘才定案），原本收盤那一秒就停，整晚顯示的是收盤前最後一筆。只影響抓不抓，畫面的盤中／休市和提醒照原本的時段。③ **藏身狀態改存 `chrome.storage.local`**：Chrome 重開後還是藏著（原本存 session，重開就跑出來）；content script 本來就讀得到 local，不用等背景程式開放 session。④ **框先藏著（`display: none`），讀到藏身狀態才顯示**，讀到之前也不送 tick：藏著時開新網頁不會閃一下。測試頁（假 chrome）確認：藏著時載入，框從頭到尾沒顯示過；切換兩次正常。還沒修的（已告知使用者）：看不見的分頁也在重畫、背景提醒在大漲大跌開著時抓全部項目、國定假日顯示「盤中」、`POP` 只看網址結尾、版本號還是 0.7.0。⚠ `tools/test.mjs` 當天發現在工作目錄被刪掉（沒提交），已用 `git checkout` 還原，原因不明
+- 2026-11-17：使用者要求接著修檢查報告的 5～10 項，測試 122 項。⑤ **看不見的分頁不重畫**：`tick()` 和 session 變更都先看 `pageVisible()`，切回來時 `visibilitychange` 補畫；迷你模式的輪播也一樣。⑥ **背景提醒只抓有設到價提醒的**（照 2026-10-30 的決定）：原本大漲大跌開著（預設）就每分鐘抓全部項目；大漲大跌照樣檢查這些項目。⑦ **國定假日**（不用假日表）：`PSMarkets.holidays()`＝有時段表的市場開盤 30 分鐘（加來源延遲）後，**同一個市場全部項目**的報價都還是開盤前的 → 今天休市（單一檔停牌不會誤判；期貨、加密貨幣、看報價時段的市場不判斷）。sw.js 每次抓完算好存 session 的 `holidays`（`{ 市場: 當天開盤時間 }`，隔天自然失效）；排程改成每 30 分鐘問一次（萬一只是延後開盤），框上那個市場標「休市」、不變灰。測試裡預設關掉（樣本的資料時間是舊的，結果會看現在幾點）。⑧ **小視窗判斷**改成比對 `chrome.runtime.getURL('popout.html')`，網站的 `/popout.html` 不算。⑨ **發布**：版本 0.8.0（README 徽章一起改；1.0.0 照原本的決定等實際用一陣子）；⚙ 最下面「備份」：匯出設定（JSON 檔 `peekastock-日期.json`，框位置和藏身狀態不放）／匯入設定（不是 PeekaStock 的檔案、壞掉的欄位都擋掉）；GitHub Actions 每次 push 跑測試。Chrome 線上應用程式商店要使用者自己註冊開發者帳號（一次 5 美元），沒做。⑩ 台指期凌晨的日期實測並修正（見 7.7）；**亞洲、中東、非洲個股的延遲還沒量**（那時是日本時間凌晨 1 點，市場都休市）。測試頁確認：兩個市場標成假日後狀態都變「休市」、匯入檔案後自選股換成檔案裡的、亂丟一個文字檔顯示「這不是 PeekaStock 的設定檔」。⚠ `Map.groupBy` 要 Chrome 117，manifest 寫最低 116，所以不用它

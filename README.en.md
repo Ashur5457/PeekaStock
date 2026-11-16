@@ -4,7 +4,7 @@
 
 **Draggable, resizable floating box**, **hide key**, **stealth mode**, **price & big-move alerts**, **watchlist with custom tabs**, and a UI in six languages. Quotes only — no trading.
 
-[![Version](https://img.shields.io/badge/version-v0.7.0-FFC23D)](manifest.json)
+[![Version](https://img.shields.io/badge/version-v0.8.0-FFC23D)](manifest.json)
 [![Chrome](https://img.shields.io/badge/Chrome-desktop-4285F4)](#-install)
 [![Free](https://img.shields.io/badge/free-no%20API%20key-2f8a4b)](#-privacy)
 [![License](https://img.shields.io/badge/license-MIT-5C4033)](LICENSE)
@@ -117,6 +117,7 @@ Click the puzzle button 🧩 in the toolbar and pin PeekaStock (clicking the ico
    - **Indices**: turn each on or off
    - **Alerts**: big moves ±% (default 3%); for a price alert tap 🔔 on a watchlist row and set an upper/lower price; with "Background" on, alerted items are also checked once a minute while the box is out of sight (market hours only), and the alert pops up the next time you see the box
    - **Display**: UI language, up/down colors, sparklines
+   - **Backup**: export your watchlist, tabs, alerts and display settings to a file and import it on another computer
 4. **Hide key Alt+Shift+H**: hides the box in all tabs; press again to bring it back. Clicking the PeekaStock toolbar icon does the same.
 
 <img src="docs/readme/panel.png" width="480" alt="Settings panel">
@@ -135,7 +136,7 @@ Chrome warns that PeekaStock can "read and change all your data on all websites"
 ## ⚠️ Known limitations
 
 - **All data sources are unofficial endpoints**: if TWSE, TAIFEX or Yahoo change their format, quotes may stop; the box shows an error at the bottom.
-- **Public holidays are not handled**: on a holiday you see the previous session's close.
+- **No holiday calendar**: a market counts as closed only when none of its quotes has new data 30 minutes after the open (plus the feed delay for delayed indices); until then it shows "Open". On a holiday you see the previous session's close.
 - **US prices** are Nasdaq real-time prices from a single exchange, which can differ slightly from the consolidated price your broker shows.
 - **Non-US indices** are delayed 15–20 minutes on Yahoo itself.
 - **Stocks from other markets** are mostly delayed 15–20 minutes too; London, South Africa and Israel quote in pence/cents, as their exchanges do, without conversion.

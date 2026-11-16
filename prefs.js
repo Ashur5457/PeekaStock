@@ -104,6 +104,32 @@ globalThis.PSPrefs ??= (() => {
   // 自選股刪掉時，所有分頁都拿掉它（不然重新加入時會莫名其妙回到舊分頁）
   const forgetKey = (tabs, key) => tabs.map((x) => ({ ...x, keys: x.keys.filter((k) => k !== key) }));
 
+  // ---------- 備份（⚙ 匯出／匯入設定，換電腦用） ----------
+
+  // 檔案內容：{ app, version, savedAt, prefs }。框的位置、藏身狀態不放（各台電腦不一樣）
+  const BACKUP_APP = 'PeekaStock';
+  const toBackup = (p, version, now = Date.now()) => ({ app: BACKUP_APP, version, savedAt: new Date(now).toISOString(), prefs: p });
+
+  // 讀進來的檔案不一定可信（可能是別人給的、手改壞的）：只收認得的欄位、型別要和預設值一樣；
+  // 自選股的代號要符合市場（台股要有上市／上櫃），自創分頁的 id、名稱要合規，數量照上限截斷
+  const sameType = (a, b) => typeof a === typeof b && Array.isArray(a) === Array.isArray(b) && (a === null) === (b === null);
+  const okWatch = (w) => typeof w?.code === 'string' && classify(w.code) === w.market && (w.market !== 'tw' || ['tse', 'otc'].includes(w.ex));
+  const pickWatch = (w) => ({ market: w.market, code: w.code, ...(w.ex && { ex: w.ex }), ...(typeof w.name === 'string' && { name: w.name }) });
+  const okTab = (x) => /^t\d+$/.test(x?.id ?? '') && typeof x.name === 'string' && x.name.trim() && x.name.length <= TAB_NAME_MAX && Array.isArray(x.keys);
+  const pickTab = (x) => ({ id: x.id, name: x.name, keys: x.keys.filter((k) => typeof k === 'string') });
+
+  // 回傳要存的設定（PSPrefs.update 用），不是 PeekaStock 的檔案就回傳 null
+  function fromBackup(data) {
+    const saved = data?.app === BACKUP_APP ? data.prefs : null;
+    if (!saved || !Array.isArray(saved.watchlist)) return null;
+    const known = Object.fromEntries(Object.entries(saved).filter(([k, v]) => k in DEFAULT && sameType(v, DEFAULT[k])));
+    return {
+      ...known,
+      watchlist: saved.watchlist.filter(okWatch).map(pickWatch).reduce(addWatch, []),
+      tabs: (known.tabs ?? []).filter(okTab).slice(0, TAB_MAX).map(pickTab),
+    };
+  }
+
   // ---------- 設定 → 畫面上的列 ----------
 
   // 自選股 → 要抓的項目。每個市場怎麼組代號、歸哪個抓取群組，查表決定；表裡沒有的市場都是其他國家個股（gl）
@@ -199,7 +225,7 @@ globalThis.PSPrefs ??= (() => {
 
   return {
     DEFAULT, WATCH_MAX, TAB_MAX, TAB_NAME_MAX, BUILTIN_TABS, MINOR_CUR, SORT_ORDER, nextSort, merge, load, update, watch, items, sections, labelOf,
-    normalize, classify, keyOf, has, isFull, addWatch, removeWatch, moveWatch,
+    normalize, classify, keyOf, has, isFull, addWatch, removeWatch, moveWatch, toBackup, fromBackup,
     visibleTabs, currentTab, tabError, addTab, renameTab, removeTab, moveTab, setInTab, forgetKey,
   };
 })();

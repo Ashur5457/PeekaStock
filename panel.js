@@ -128,6 +128,14 @@ globalThis.PSPanel ??= (() => {
       <div class="irow"><span class="region" data-i18n="p.debug"></span><div class="ichecks">
         <label class="idx"><input type="checkbox" class="idx" data-pref="showLag"><span data-i18n="p.showLag"></span></label>
       </div></div>
+      <div class="psec" data-i18n="p.backup"></div>
+      <div class="irow"><div class="ichecks">
+        <button class="add" type="button" data-backup="export" data-i18n="p.export"></button>
+        <button class="add" type="button" data-backup="import" data-i18n="p.import"></button>
+        <input type="file" class="backup" accept=".json,application/json" hidden>
+      </div></div>
+      <div class="phint" data-i18n="p.backupHint"></div>
+      <div class="pmsg" data-msg="backup"></div>
       </div>
     </div>`;
 
@@ -464,6 +472,36 @@ globalThis.PSPanel ??= (() => {
       if (kind) PSPrefs.update(CHANGES[kind](e.target, await PSPrefs.load()));
     });
 
+    // ---------- 備份：匯出成 JSON 檔、從檔案匯入（面板不會自己重畫，用 click） ----------
+
+    const fileInput = q('input.backup');
+    async function exportPrefs() {
+      const data = PSPrefs.toBackup(await PSPrefs.load(), chrome.runtime.getManifest().version);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+      const a = Object.assign(document.createElement('a'), { href: url, download: `peekastock-${data.savedAt.slice(0, 10)}.json` });
+      panel.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    const BACKUP = { export: exportPrefs, import: () => fileInput.click() };
+    panel.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-backup]');
+      if (b) BACKUP[b.dataset.backup]();
+    });
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      fileInput.value = '';   // 同一個檔案再選一次也會觸發
+      if (!file) return;
+      let next = null;
+      try {
+        next = PSPrefs.fromBackup(JSON.parse(await file.text()));
+      } catch { /* 不是 JSON：當成不是設定檔 */ }
+      if (!next) return say('backup', t('msg.badFile'));
+      await PSPrefs.update(next);
+      say('backup', t('msg.imported', { n: next.watchlist.length }));
+    });
+
     // ---------- 位置 ----------
 
     const isOpen = () => !panel.hidden;
@@ -504,6 +542,7 @@ globalThis.PSPanel ??= (() => {
       if (view === 'settings') {
         say('watch', '');
         say('tab', '');
+        say('backup', '');
         render();
       }
       return view;

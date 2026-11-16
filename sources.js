@@ -149,12 +149,16 @@ globalThis.PSSources ??= (() => {
 
   // MarketType：0＝日盤、1＝夜盤（盤後交易）。夜盤的價格標 night，漲跌跟期交所給的參考價（日盤結算）比
   const TAIFEX_SESSION = { day: { type: '0', from: 'trade' }, night: { type: '1', from: 'night' } };
-  // 日期 20261106＋時間 202047（凌晨可能只有 5 位數）是台北時間（UTC+8，沒有夏令時間）
-  function taifexTime(date, time) {
+  // 日期 20261106＋時間 202047（早上可能只有 5 位數）是台北時間（UTC+8，沒有夏令時間）。
+  // 夜盤的日期是「這一盤開始的那天」：過了午夜還是前一天（2026-11-17 00:00 實測 20261116＋000014），
+  // 所以夜盤 15:00 以前的時間（00:00～05:00）要算到隔天
+  const NEXT_DAY_BEFORE = { day: null, night: '150000' };
+  function taifexTime(date, time, session = 'day') {
     if (!/^\d{8}$/.test(date ?? '') || !/^\d{5,6}$/.test(time ?? '')) return null;
     const hms = time.padStart(6, '0');
     const n = (s, a, b) => Number(s.slice(a, b));
-    return Date.UTC(n(date, 0, 4), n(date, 4, 6) - 1, n(date, 6, 8), n(hms, 0, 2) - 8, n(hms, 2, 4), n(hms, 4, 6));
+    const next = NEXT_DAY_BEFORE[session] && hms < NEXT_DAY_BEFORE[session] ? 1 : 0;
+    return Date.UTC(n(date, 0, 4), n(date, 4, 6) - 1, n(date, 6, 8) + next, n(hms, 0, 2) - 8, n(hms, 2, 4), n(hms, 4, 6));
   }
 
   // 回應裡第一筆是現貨（TXF-S／TXF-P），之後照到期月排；第一個期貨合約就是近月，換月自動跟著換
@@ -163,7 +167,7 @@ globalThis.PSSources ??= (() => {
     if (!row) return [];
     const price = num(row.CLastPrice) ?? num(row.CBestBidPrice);
     return [withChange({ key: item.key, name: row.DispCName, price, prev: num(row.CRefPrice),
-      time: taifexTime(row.CDate, row.CTime), fetchedAt: at, from: TAIFEX_SESSION[session].from })];
+      time: taifexTime(row.CDate, row.CTime, session), fetchedAt: at, from: TAIFEX_SESSION[session].from })];
   }
 
   async function taifex(items, fetchFn = fetch, now = Date.now()) {

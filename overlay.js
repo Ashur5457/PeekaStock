@@ -2,7 +2,7 @@
 // 位置大小存 chrome.storage.local（overlayBox），所有分頁共用同一個位置：一個分頁拖了，其他分頁跟著移。
 //   分頁看得見時每 5 秒送 { to:'sw', cmd:'tick' }，背景程式決定要不要真的去抓
 //   報價、狀態、MIS 延遲統計都從 chrome.storage.session 讀，變了就重畫
-//   藏身鍵：session 的 hidden＝true 時藏起來、不送 tick；工具列 👁、快捷鍵、點圖示都切換它（sw.js 的 toggleHidden）
+//   藏身鍵：chrome.storage.local 的 hidden＝true 時藏起來（Chrome 重開後還是藏著）、不送 tick；工具列 👁、快捷鍵、點圖示都切換它（sw.js 的 toggleHidden）
 //   隱身模式：prefs.stealth，工具列 ◐ 切換；外觀全部由 CSS 的 data-look="stealth" 決定
 //   設定面板：工具列 ⚙；使用說明：工具列 ?（兩個共用 panel.js 的浮動視窗）
 //   分頁列：全部／台股／美股／國際＋自創分頁（PSPrefs.visibleTabs）；選的分頁存在 prefs.tab，所有分頁的框同步
@@ -17,10 +17,11 @@
 
   // 彈出小視窗（popout.html，見 popout.js）：框填滿小視窗，不要工具列、耳朵、縮放把手；設定都在網頁上的框做。
   // 主人視窗常常被蓋住或縮小，所以不看分頁看不看得見
-  const POP = location.pathname.endsWith('/popout.html');
+  const POP = location.href.startsWith(chrome.runtime.getURL('popout.html'));   // 只認擴充功能自己的頁面，網站的 /popout.html 不算
   const pageVisible = () => POP || document.visibilityState === 'visible';
 
   const BOX_KEY = 'overlayBox';
+  const HIDDEN_KEY = 'hidden';
   const TICK_MS = 5000;
   const STALE_SEC = 120;   // 盤中資料超過 2 分鐘變灰（CLAUDE.md 2.3）
   const { t } = PSI18n;    // 查翻譯；不要再拿 t 當區域變數名稱（CLAUDE.md 第 4 節坑 3）
@@ -162,6 +163,7 @@
     ${PSPanel.CSS}`;
 
   const host = document.createElement('peek-stock');
+  host.style.display = 'none';   // 先藏著，讀到藏身狀態才決定要不要顯示：不然藏著的時候每開一個網頁都會閃一下
   const root = host.attachShadow({ mode: 'open' });
   root.innerHTML = `<style>${STYLE}</style>
     <div class="box">
@@ -183,6 +185,7 @@
 
   let prefs = PSPrefs.DEFAULT;
   let session = { quotes: {}, status: {}, misLag: null };
+  let hidden = true;   // 藏身鍵狀態；還沒讀到之前當成藏著（不畫、不抓）
   const panel = PSPanel.create(root, { getPrefs: () => prefs, getQuotes: () => session.quotes });
 
   // ---------- 位置、大小（計算都在 box.js） ----------
@@ -276,7 +279,7 @@
     },
   };
   // 在網頁空白處點兩下＝藏身／叫出（判斷見 blank.js；設定 prefs.dblHide 可關掉）。藏起來時框還在網頁裡，照樣聽得到
-  const hideFromPage = () => (session.hidden ? send({ to: 'sw', cmd: 'toggleHidden' }) : ACTIONS.hide());
+  const hideFromPage = () => (hidden ? send({ to: 'sw', cmd: 'toggleHidden' }) : ACTIONS.hide());
   document.addEventListener('dblclick', (e) => {
     if (POP || !prefs.dblHide || !alive()) return;
     if (PSBlank.isBlank(e, window.getSelection()?.toString(), host)) hideFromPage();
@@ -336,9 +339,12 @@
   const COLS = () => (showLine() ? 6 : 5);
 
   // 一列：名稱、（走勢線）、價格、（買價／賣價／盤前／盤後）、漲跌％、資料時間
+  // 判斷成國定假日的市場（背景程式算好存在 session.holidays）當成休市：不變灰、狀態標「休市」
+  const holiday = (market, now) => PSMarkets.isHoliday(market, now, session.holidays);
+
   function rowView(item, quote, now) {
     const tr = document.createElement('tr');
-    const open = PSMarkets.isOpen(item.market, now, quote, item.delay);
+    const open = PSMarkets.isOpen(item.market, now, quote, item.delay) && !holiday(item.market, now);
     const lag = quote?.time ? (now - quote.time) / 1000 : null;
     tr.classList.toggle('stale', open && lag > STALE_SEC + (item.delay ?? 0));
     tr.classList.toggle('closed', !open);
@@ -428,7 +434,7 @@
 
   // 分頁裡有好幾段才顯示段標題；只有一段時，有市場狀態的話還是留一行只放狀態
   function headRows(s, secs, now, quotes) {
-    const status = s.market ? PSMarkets.phase(s.market, now, quotes[s.items[0].key]) : null;
+    const status = !s.market ? null : holiday(s.market, now) ? 'closed' : PSMarkets.phase(s.market, now, quotes[s.items[0].key]);
     if (secs.length > 1) return [sectionRow(t(s.titleKey), status)];
     return status ? [sectionRow('', status)] : [];
   }
@@ -468,7 +474,7 @@
   }
   setInterval(() => {
     miniIndex += 1;
-    if (prefs.mini && !session.hidden) renderMini();
+    if (prefs.mini && !hidden && pageVisible()) renderMini();
   }, MINI_MS);
 
   function renderTabs() {
@@ -517,7 +523,7 @@
 
   function showAlerts() {
     const next = (session.alertQueue ?? [])[0];
-    const visible = !session.hidden && pageVisible();
+    const visible = !hidden && pageVisible();
     if (!next || !visible) {
       if (!next) bubble.hidden = true;
       return;
@@ -541,16 +547,15 @@
 
   function tick() {
     if (!alive()) return;
-    if (session.hidden) return;   // 藏身鍵：藏起來時不抓也不畫
+    if (hidden || !pageVisible()) return;   // 藏起來、或分頁看不見時不抓也不畫（切回來時 visibilitychange 會補畫）
     render();   // 就算不抓，也要重畫（資料時間到了要變灰）
     showAlerts();
-    if (!pageVisible()) return;
     send({ to: 'sw', cmd: 'tick' });
   }
 
   const updateHidden = () => {
-    host.style.display = session.hidden ? 'none' : '';
-    if (!session.hidden) el.classList.remove('hiding');   // 叫出來時把 👁 的藏起來動畫還原
+    host.style.display = hidden ? 'none' : '';
+    if (!hidden) el.classList.remove('hiding');   // 叫出來時把 👁 的藏起來動畫還原
   };
 
   function applyPrefs(p) {
@@ -579,25 +584,32 @@
       box = ch[BOX_KEY].newValue ?? null;
       apply();
     }
+    if (area === 'local' && ch[HIDDEN_KEY]) {
+      hidden = Boolean(ch[HIDDEN_KEY].newValue);
+      updateHidden();
+      tick();   // 叫出來時立刻補抓（藏起來時 tick 什麼都不做）
+      showAlerts();
+    }
     if (area !== 'session') return;
     Object.entries(ch).forEach(([k, v]) => { session[k] = v.newValue; });
-    updateHidden();
-    if ('hidden' in ch && !session.hidden) tick();   // 叫出來時立刻補抓
-    else render();
+    if (!pageVisible()) return;   // 看不見的分頁只記下資料，不重畫（開 20 個分頁時才不會每次都畫 20 次）
+    render();
     showAlerts();
   });
   PSPrefs.watch(applyPrefs);
   PSPrefs.load().then(applyPrefs);
   // 第一次安裝時背景程式還沒開放 storage.session，讀不到就等 tick 之後的變更通知
-  chrome.storage.session.get(['quotes', 'status', 'misLag', 'hidden', 'alertQueue']).then((r) => {
+  chrome.storage.session.get(['quotes', 'status', 'misLag', 'alertQueue']).then((r) => {
     session = { ...session, ...r };
-    updateHidden();
     render();
     showAlerts();
   }, () => {});
-  chrome.storage.local.get(BOX_KEY).then((r) => {
+  chrome.storage.local.get([BOX_KEY, HIDDEN_KEY]).then((r) => {
     box = r[BOX_KEY] ?? null;
+    hidden = Boolean(r[HIDDEN_KEY]);
+    updateHidden();
     apply();
+    tick();
   });
 
   // ---------- 放進網頁 ----------

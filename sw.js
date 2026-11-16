@@ -2,10 +2,11 @@
 //   quotes：key → quote（見 sources.js）
 //   status：群組 id → { ok, error, at, fails, count }，懸浮框顯示錯誤用
 //   misLag：MIS 盤中延遲統計（CLAUDE.md 7.2 留下的問題：長時間觀察 MIS 延遲）
-//   hidden：藏身鍵狀態（true＝所有分頁的框都藏起來）
+//   holidays：判斷出來的國定假日 { 市場: 當天開盤時間 }（markets.js 的 holidays）
 //   alertQueue：還沒顯示完的提醒（框顯示貓掌泡泡，顯示完送 dismissAlert 拿掉）；alertFired：今天響過的提醒 id
+// 藏身鍵狀態 hidden（true＝所有分頁的框都藏起來）存在 chrome.storage.local：Chrome 重開後還是藏著，不會自己跑出來。
 // 沒有分頁送 tick（沒有看得見的分頁）或框藏起來時，就完全不發請求；多個 tick 同時進來共用同一次抓取。
-// 例外：使用者打開「背景提醒」時，chrome.alarms 每 1 分鐘只抓有設提醒的項目（PSAlerts.watched），只在開盤時段。
+// 例外：使用者打開「背景提醒」時，chrome.alarms 每 1 分鐘只抓有設到價提醒的項目（PSAlerts.watched），只在開盤時段。
 importScripts('markets.js', 'prefs.js', 'sources.js', 'schedule.js', 'alerts.js');
 
 // storage.session 預設只有背景程式讀得到，懸浮框（content script）要先開放才能讀和收到變更
@@ -30,8 +31,8 @@ let running = null;
 
 // 藏身鍵：快捷鍵、點工具列圖示、框上的 👁 都切換同一個 hidden，所有分頁的框監聽它跟著藏起來
 async function toggleHidden() {
-  const { hidden = false } = await chrome.storage.session.get('hidden');
-  await chrome.storage.session.set({ hidden: !hidden });
+  const { hidden = false } = await chrome.storage.local.get('hidden');
+  await chrome.storage.local.set({ hidden: !hidden });
 }
 
 // 新增自選股前查代號：框（content script）不能直接連 MIS／Yahoo（跨網域會被擋），所以由這裡查。
@@ -92,16 +93,17 @@ chrome.alarms.onAlarm.addListener((a) => {
 // background＝背景提醒叫醒的：就算框藏起來也抓，但只抓有設提醒的項目
 async function refresh({ background = false } = {}) {
   const now = Date.now();
-  const [prefs, stored] = await Promise.all([PSPrefs.load(), chrome.storage.session.get(['quotes', 'status', 'misLag', 'hidden'])]);
-  if (stored.hidden && !background) return;   // 框藏起來時不抓（框本來就不送 tick，這裡再擋一次舊的框）
+  const [prefs, stored, { hidden }] = await Promise.all([PSPrefs.load(),
+    chrome.storage.session.get(['quotes', 'status', 'misLag', 'holidays']), chrome.storage.local.get('hidden')]);
+  if (hidden && !background) return;   // 框藏起來時不抓（框本來就不送 tick，這裡再擋一次舊的框）
   const all = PSPrefs.items(prefs);
   const wanted = background ? PSAlerts.watched(all, prefs) : all;
   const plans = GROUPS.filter((g) => !(background && g.extended))
     .map((g) => ({ ...g, items: wanted.filter(g.pick ?? ((i) => i.group === g.id)) }));
-  const todo = PSSchedule.due(plans, now, state, stored.quotes ?? {});
+  const todo = PSSchedule.due(plans, now, state, stored.quotes ?? {}, stored.holidays ?? {});
   if (!todo.length) return;
   const results = await Promise.all(todo.map(run));
-  const quotes = await save(results, stored);
+  const quotes = await save(results, stored, all);
   await queueAlerts(all, quotes, prefs);
 }
 
@@ -148,7 +150,8 @@ function growLine(prev, q) {
 // 沒有自帶走勢的來源怎麼補：台股自己接；盤前盤後（chart）沿用 spark 抓到的正常時段走勢
 const LINE_FROM = { tw: (q, prev) => growLine(prev, q), txf: (q, prev) => growLine(prev, q), ext: (q, prev) => prev?.line };
 
-async function save(results, stored) {
+// all：所有項目（判斷國定假日要看同一個市場的全部項目）
+async function save(results, stored, all) {
   const quotes = { ...stored.quotes };
   const status = { ...stored.status };
   for (const r of results) {
@@ -160,7 +163,8 @@ async function save(results, stored) {
   }
   const tw = results.find((r) => r.id === 'tw');
   const misLag = tw?.quotes.length ? countLag(stored.misLag, tw.quotes) : stored.misLag;
-  await chrome.storage.session.set({ quotes, status, ...(misLag && { misLag }) });
+  const holidays = PSMarkets.holidays(all, quotes, Date.now());
+  await chrome.storage.session.set({ quotes, status, holidays, ...(misLag && { misLag }) });
   return quotes;
 }
 

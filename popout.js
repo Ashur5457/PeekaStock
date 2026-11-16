@@ -31,12 +31,12 @@
     pip.addEventListener('pagehide', closed);
     openBtn.disabled = true;
     paint(await PSPrefs.load());
-    const { hidden } = await chrome.storage.session.get('hidden');
+    const { hidden } = await chrome.storage.local.get('hidden');
     if (hidden) chrome.runtime.sendMessage({ to: 'sw', cmd: 'toggleHidden' }).catch(() => {});   // 藏著時按「開」＝叫出來
   }
 
   openBtn.addEventListener('click', open);
-  chrome.storage.session.onChanged.addListener((ch) => {
+  chrome.storage.local.onChanged.addListener((ch) => {
     if (ch.hidden?.newValue) pip?.close();
   });
   PSPrefs.watch(paint);

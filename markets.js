@@ -32,12 +32,13 @@ globalThis.PSMarkets ??= (() => {
     }).map(([m, tz]) => [m, { tz }])),
     // 不是週一到週五的市場用 byDay：每天各自的時段，沒寫的那天休市
     crypto: { tz: 'UTC', byDay: Object.fromEntries(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => [d, ALL_DAY])) },
-    // CME 期貨：週日 18:00 開到週五 17:00（美東時間），每天 17:00～18:00 休息
-    fut: { tz: 'America/New_York', byDay: {
+    // CME 期貨：週日 18:00 開到週五 17:00（美東時間），每天 17:00～18:00 休息。
+    // dayShift：交易日比日曆日早幾小時開始（18:00 開的算隔天），提醒「一天一次」用交易日算才不會過午夜再響一次（alerts.js）
+    fut: { tz: 'America/New_York', dayShift: 6, byDay: {
       Sun: [['18:00', '24:00']], Mon: FUT_DAY, Tue: FUT_DAY, Wed: FUT_DAY, Thu: FUT_DAY, Fri: [['00:00', '17:00']],
     } },
     // 台指期（期交所）：日盤 08:45～13:45、夜盤 15:00～隔天 05:00；週一凌晨沒有夜盤，週五的夜盤做到週六 05:00
-    txf: { tz: 'Asia/Taipei', byDay: {
+    txf: { tz: 'Asia/Taipei', dayShift: 9, byDay: {
       Mon: TXF_MON, Tue: TXF_DAY, Wed: TXF_DAY, Thu: TXF_DAY, Fri: TXF_DAY, Sat: [['00:00', '05:00']],
     } },
   };
@@ -132,6 +133,39 @@ globalThis.PSMarkets ??= (() => {
     return [ms(today[0][0]), ms(today.at(-1)[1])];
   }
 
+  // 這個交易時段的報價最早從什麼時候算起（毫秒）：比它舊的是上一個交易時段留下來的，提醒不能拿來用（alerts.js）。
+  // 剛開盤、國定假日、延遲 15 分的指數開盤後那 15 分鐘，來源給的都還是上一個交易日的收盤。
+  // 有時段表的市場＝今天第一段開盤；看報價時段的市場＝報價附的開盤時間；
+  // 跨午夜的市場（期貨、加密貨幣）和其他算不出來的情況＝最近 30 分鐘內的才算
+  const FRESH_MS = 30 * 60 * 1000;
+  function freshFrom(market, now, quote, delay = 0) {
+    const at = now - delay * 1000;
+    const start = byQuote(market) ? quote?.period?.[0] : MARKETS[market].byDay ? null : dayRange(market, at)?.[0];
+    return start != null && start <= now ? start : at - FRESH_MS;
+  }
+
+  // 國定假日（不用維護假日表）：有時段表的市場開盤 30 分鐘後（再加上來源延遲），這個市場所有項目抓到的報價
+  // 都還是開盤前的 → 今天休市。回傳 { 市場: 今天開盤時間 }，存在 storage.session 的 holidays（sw.js）。
+  // 只看「全部項目」：單一檔停牌時其他檔有今天的資料，不會誤判。期貨、加密貨幣（byDay）和看報價時段的市場不用判斷
+  // （Yahoo 給的時段已經算進假日）
+  const HOLIDAY_AFTER = 30 * 60 * 1000;
+  function holidays(items, quotes, now) {
+    const markets = [...new Set(items.filter((i) => MARKETS[i.market].hours).map((i) => i.market))];
+    const out = {};
+    markets.forEach((market) => {
+      const list = items.filter((i) => i.market === market);
+      const r = dayRange(market, now);
+      const stale = (i) => {
+        const q = quotes[i.key];
+        return q?.time != null && q.time < r[0] && q.fetchedAt >= r[0] + (i.delay ?? 0) * 1000 + HOLIDAY_AFTER;
+      };
+      if (r && list.every(stale)) out[market] = r[0];
+    });
+    return out;
+  }
+  // 今天是不是判斷出來的假日（holidays 存的是當天開盤時間，隔天自然不算）
+  const isHoliday = (market, now, found = {}) => found[market] != null && found[market] === dayRange(market, now)?.[0];
+
   // 走勢線的橫軸 [開, 收]（毫秒）：那一天的交易時段；Yahoo 的時段只在還沒換到下一個交易日時能用（收盤後它給的是下一天）。
   // 都沒有就用線本身的頭尾（畫滿整列）。line＝[[時間（秒）, 價格]…]
   function lineDomain(market, quote) {
@@ -151,5 +185,5 @@ globalThis.PSMarkets ??= (() => {
     return r && now > r[0] && now < r[1] ? 'break' : 'closed';
   }
 
-  return { MARKETS, INDICES, SUFFIX, suffixOf, byQuote, isOpen, extSession, txfSession, dayRange, lineDomain, phase };
+  return { MARKETS, INDICES, SUFFIX, suffixOf, byQuote, isOpen, extSession, txfSession, dayRange, freshFrom, holidays, isHoliday, lineDomain, phase };
 })();
